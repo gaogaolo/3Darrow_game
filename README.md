@@ -4,7 +4,7 @@
 
 ## Online Page
 
-After GitHub Pages finishes deploying, the editor should be available at:
+After GitHub Pages finishes deploying from the `main` branch root, the editor should be available at:
 
 https://gaogaolo.github.io/3Darrow_game/
 
