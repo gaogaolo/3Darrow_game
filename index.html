@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>箭头 3D 长方体编辑器</title>
+  <title>3D 箭头组合体编辑器</title>
   <link rel="icon" href="data:,">
   <script type="importmap">
     {
@@ -14,21 +14,23 @@
   </script>
   <style>
     :root {
-      --paper: #f6f8f4;
-      --panel: #e9eee8;
-      --panel-strong: #dfe7df;
-      --ink: #17201d;
-      --muted: #68736c;
-      --line: #c8d2ca;
-      --teal: #178f83;
-      --copper: #c56b36;
-      --sun: #e3ad37;
-      --berry: #bf4360;
-      --leaf: #57965f;
-      --focus: #1c78b9;
-      --shadow: 0 18px 48px rgba(24, 32, 29, 0.11);
+      --space: #080e15;
+      --space-2: #101923;
+      --panel: rgba(18, 28, 38, 0.88);
+      --panel-solid: #152130;
+      --panel-soft: rgba(31, 45, 59, 0.82);
+      --line: rgba(134, 167, 190, 0.32);
+      --line-strong: rgba(169, 211, 237, 0.54);
+      --ink: #eef8ff;
+      --muted: #9fb2c2;
+      --cyan: #19d8ff;
+      --violet: #b875ff;
+      --lime: #a8ef32;
+      --rose: #ff4f7a;
+      --amber: #ffc857;
       --radius: 8px;
-      color-scheme: light;
+      --shadow: 0 22px 58px rgba(0, 0, 0, 0.36);
+      color-scheme: dark;
       font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
 
@@ -36,16 +38,32 @@
       box-sizing: border-box;
     }
 
+    html,
+    body {
+      min-height: 100%;
+    }
+
     body {
       margin: 0;
-      min-height: 100vh;
       color: var(--ink);
       background:
-        linear-gradient(90deg, rgba(23, 143, 131, 0.08) 1px, transparent 1px),
-        linear-gradient(0deg, rgba(197, 107, 54, 0.07) 1px, transparent 1px),
-        var(--paper);
-      background-size: 32px 32px;
+        radial-gradient(circle at 22% 14%, rgba(25, 216, 255, 0.16), transparent 24%),
+        radial-gradient(circle at 78% 18%, rgba(184, 117, 255, 0.12), transparent 22%),
+        linear-gradient(180deg, #081019, #0b1118 56%, #060a10);
       letter-spacing: 0;
+    }
+
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background-image:
+        radial-gradient(circle, rgba(255,255,255,0.9) 0 1px, transparent 1.4px),
+        radial-gradient(circle, rgba(125,194,255,0.72) 0 1px, transparent 1.2px);
+      background-size: 82px 82px, 47px 47px;
+      background-position: 8px 12px, 31px 21px;
+      opacity: 0.28;
     }
 
     button,
@@ -57,49 +75,45 @@
     }
 
     button,
+    input,
     select,
-    input[type="number"],
-    input[type="text"],
     textarea {
       border: 1px solid var(--line);
-      background: #fbfcfa;
-      color: var(--ink);
       border-radius: var(--radius);
+      background: rgba(8, 14, 21, 0.88);
+      color: var(--ink);
     }
 
     button {
       min-height: 36px;
       padding: 0 12px;
+      font-weight: 800;
       cursor: pointer;
-      font-weight: 750;
-      transition: transform 160ms ease, background 160ms ease, border-color 160ms ease, color 160ms ease;
       white-space: nowrap;
+      transition: transform 140ms ease, border-color 140ms ease, background 140ms ease;
     }
 
     button:hover {
       transform: translateY(-1px);
-      border-color: #9cac9f;
-      background: #ffffff;
+      border-color: var(--line-strong);
+      background: rgba(25, 216, 255, 0.12);
     }
 
     button:active {
       transform: translateY(0);
     }
 
-    button:focus-visible,
-    input:focus-visible,
-    select:focus-visible,
-    textarea:focus-visible {
-      outline: 3px solid rgba(28, 120, 185, 0.26);
-      outline-offset: 2px;
+    button:disabled {
+      cursor: not-allowed;
+      opacity: 0.48;
+      transform: none;
     }
 
-    input[type="number"],
-    input[type="text"],
+    input,
     select {
+      width: 100%;
       min-height: 36px;
       padding: 0 10px;
-      width: 100%;
     }
 
     textarea {
@@ -109,11 +123,21 @@
       resize: vertical;
       font-family: "SFMono-Regular", Consolas, "Liberation Mono", monospace;
       font-size: 12px;
-      line-height: 1.5;
-      background: #fbfcfa;
+      line-height: 1.45;
+      color: #d9f4ff;
+    }
+
+    button:focus-visible,
+    input:focus-visible,
+    select:focus-visible,
+    textarea:focus-visible {
+      outline: 3px solid rgba(25, 216, 255, 0.28);
+      outline-offset: 2px;
     }
 
     .app {
+      position: relative;
+      z-index: 1;
       min-height: 100vh;
       display: grid;
       grid-template-rows: auto 1fr auto;
@@ -123,71 +147,71 @@
       position: sticky;
       top: 0;
       z-index: 20;
+      min-height: 72px;
       display: grid;
       grid-template-columns: minmax(250px, 1fr) auto auto;
       align-items: center;
       gap: 16px;
-      min-height: 74px;
       padding: 12px 18px;
       border-bottom: 1px solid var(--line);
-      background: rgba(246, 248, 244, 0.94);
-      backdrop-filter: blur(14px);
+      background: rgba(7, 12, 18, 0.88);
+      backdrop-filter: blur(16px);
     }
 
     .brand {
+      min-width: 0;
       display: flex;
       align-items: center;
       gap: 12px;
+    }
+
+    .brand > div {
       min-width: 0;
     }
 
-    .brand > div:last-child {
-      min-width: 0;
-    }
-
-    .cube-mark {
+    .brand-mark {
       width: 42px;
       height: 42px;
       flex: 0 0 auto;
       position: relative;
-      border: 2px solid var(--ink);
-      border-radius: 7px;
+      border: 1px solid rgba(25, 216, 255, 0.72);
+      border-radius: 8px;
       background:
-        linear-gradient(135deg, rgba(23, 143, 131, 0.32), transparent 48%),
-        linear-gradient(45deg, transparent 52%, rgba(197, 107, 54, 0.28) 53%),
-        #fffdf9;
-      box-shadow: 4px 5px 0 rgba(23, 32, 29, 0.14);
+        linear-gradient(135deg, rgba(25, 216, 255, 0.35), transparent 48%),
+        linear-gradient(45deg, transparent 50%, rgba(184, 117, 255, 0.32) 51%),
+        #09131f;
+      box-shadow: 0 0 18px rgba(25, 216, 255, 0.2), inset 0 0 18px rgba(184, 117, 255, 0.12);
     }
 
-    .cube-mark::before,
-    .cube-mark::after {
+    .brand-mark::before,
+    .brand-mark::after {
       content: "";
       position: absolute;
-      background: var(--ink);
-      opacity: 0.78;
+      background: var(--cyan);
+      opacity: 0.85;
     }
 
-    .cube-mark::before {
+    .brand-mark::before {
       width: 2px;
-      height: 32px;
+      height: 31px;
       left: 20px;
-      top: 4px;
+      top: 5px;
       transform: rotate(34deg);
     }
 
-    .cube-mark::after {
-      width: 28px;
+    .brand-mark::after {
+      width: 27px;
       height: 2px;
       left: 7px;
       top: 20px;
-      transform: rotate(-21deg);
+      transform: rotate(-22deg);
     }
 
-    .brand h1 {
+    h1 {
       margin: 0;
-      font-size: clamp(18px, 2.2vw, 26px);
-      line-height: 1.08;
-      font-weight: 860;
+      font-size: clamp(18px, 2vw, 26px);
+      line-height: 1.05;
+      font-weight: 900;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -195,9 +219,9 @@
 
     .status-line {
       margin: 5px 0 0;
+      min-height: 18px;
       color: var(--muted);
       font-size: 13px;
-      min-height: 18px;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
@@ -211,13 +235,13 @@
     }
 
     .stat {
+      min-width: 74px;
       display: grid;
-      gap: 1px;
-      min-width: 72px;
+      gap: 2px;
       padding: 8px 10px;
       border: 1px solid var(--line);
-      background: rgba(255, 255, 255, 0.72);
       border-radius: var(--radius);
+      background: rgba(13, 21, 30, 0.74);
     }
 
     .stat b {
@@ -239,397 +263,363 @@
     }
 
     .primary {
-      color: #fff;
-      border-color: #0f7168;
-      background: var(--teal);
+      color: #041018;
+      border-color: rgba(25, 216, 255, 0.78);
+      background: linear-gradient(180deg, #38e7ff, #18bddf);
     }
 
-    .primary:hover {
-      color: #fff;
-      background: #117d73;
+    .lime {
+      color: #071305;
+      border-color: rgba(168, 239, 50, 0.8);
+      background: linear-gradient(180deg, #bdf85a, #92db24);
     }
 
     .danger {
       color: #fff;
-      border-color: #a9364f;
-      background: var(--berry);
-    }
-
-    .danger:hover {
-      color: #fff;
-      background: #aa3852;
+      border-color: rgba(255, 79, 122, 0.82);
+      background: rgba(255, 79, 122, 0.72);
     }
 
     .workspace {
       display: grid;
-      grid-template-columns: 284px minmax(360px, 1.1fr) minmax(420px, 0.95fr);
+      grid-template-columns: 310px minmax(360px, 0.92fr) minmax(440px, 1.12fr);
       gap: 14px;
       padding: 14px;
       min-height: 0;
-      align-items: start;
     }
 
     .panel,
-    .net-panel,
+    .atlas-panel,
     .three-panel,
     .json-dock {
       border: 1px solid var(--line);
-      background: rgba(255, 255, 255, 0.78);
-      box-shadow: var(--shadow);
       border-radius: var(--radius);
-      min-width: 0;
+      background: var(--panel);
+      box-shadow: var(--shadow);
     }
 
     .panel {
-      padding: 14px;
       overflow: auto;
+      max-height: calc(100vh - 104px);
+      padding: 14px;
+    }
+
+    .control-section {
+      padding: 0 0 14px;
+      margin: 0 0 14px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .control-section:last-child {
+      border-bottom: 0;
+      margin-bottom: 0;
+      padding-bottom: 0;
     }
 
     .panel-title,
     .section-title {
       margin: 0;
-      font-size: 13px;
-      text-transform: uppercase;
-      font-weight: 860;
-      letter-spacing: 0.08em;
-      color: #34413b;
-    }
-
-    .control-section {
-      padding: 14px 0;
-      border-bottom: 1px solid var(--line);
-    }
-
-    .control-section:first-child {
-      padding-top: 0;
-    }
-
-    .control-section:last-child {
-      border-bottom: 0;
-      padding-bottom: 0;
+      font-size: 14px;
+      font-weight: 900;
     }
 
     .field-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 10px;
-      margin-top: 12px;
-    }
-
-    .field {
-      display: grid;
-      gap: 6px;
+      margin-top: 10px;
     }
 
     .field.wide {
       grid-column: 1 / -1;
     }
 
-    .dimension-editor {
-      display: grid;
-      gap: 7px;
-      margin-top: 12px;
-    }
-
-    .dimension-row {
-      display: grid;
-      grid-template-columns: 64px 1fr 1fr;
-      align-items: center;
-      gap: 7px;
-    }
-
-    .dimension-row span {
-      font-size: 12px;
-      font-weight: 850;
-      color: #34413b;
-    }
-
-    .dimension-row input {
-      min-height: 32px;
-      padding: 0 8px;
-    }
-
     label {
+      display: block;
+      margin: 0 0 5px;
       color: var(--muted);
       font-size: 12px;
-      font-weight: 720;
-    }
-
-    .segmented {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 6px;
-      margin-top: 12px;
-      padding: 4px;
-      border: 1px solid var(--line);
-      border-radius: var(--radius);
-      background: #f2f5f0;
-    }
-
-    .segmented button {
-      min-height: 32px;
-      border: 0;
-      background: transparent;
-      color: var(--muted);
-      padding: 0 8px;
-    }
-
-    .segmented button.active {
-      color: #fff;
-      background: var(--ink);
+      font-weight: 800;
     }
 
     .button-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 8px;
-      margin-top: 12px;
+      margin-top: 10px;
     }
 
     .button-grid .wide {
       grid-column: 1 / -1;
     }
 
-    .draw-strip {
+    .control-subtitle {
+      margin: 12px 0 0;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 900;
+    }
+
+    .axis-grid {
       display: grid;
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
       gap: 8px;
+      margin-top: 8px;
+    }
+
+    .axis-grid button {
+      min-width: 0;
+      padding: 0 8px;
+      font-variant-numeric: tabular-nums;
+    }
+
+    .exact-panel {
+      margin-top: 12px;
+      border-top: 1px solid var(--line);
+      padding-top: 10px;
+    }
+
+    .exact-panel summary {
+      cursor: pointer;
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 900;
+      list-style-position: inside;
+    }
+
+    .segmented {
+      display: grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      padding: 4px;
+      gap: 4px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(8, 14, 21, 0.68);
       margin-top: 10px;
+    }
+
+    .segmented button {
+      min-height: 32px;
+      padding: 0 6px;
+      border: 0;
+      background: transparent;
+      color: var(--muted);
+    }
+
+    .segmented button.active {
+      color: #041018;
+      background: var(--cyan);
     }
 
     .toggle-line {
       display: flex;
       align-items: center;
       justify-content: space-between;
+      min-height: 36px;
       gap: 10px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: rgba(8, 14, 21, 0.72);
+    }
+
+    .block-list {
+      display: grid;
+      gap: 8px;
       margin-top: 10px;
     }
 
-    .toggle-line input {
-      width: 44px;
-      height: 24px;
-      accent-color: var(--teal);
-    }
-
-    .selected-readout {
+    .block-row {
       display: grid;
+      grid-template-columns: 18px minmax(0, 1fr) auto;
       gap: 8px;
-      margin-top: 12px;
-      padding: 10px;
+      align-items: center;
+      padding: 8px;
       border: 1px solid var(--line);
       border-radius: var(--radius);
-      background: #f9fbf7;
-      font-size: 12px;
-      color: var(--muted);
+      background: rgba(8, 14, 21, 0.7);
+      cursor: pointer;
     }
 
-    .selected-readout strong {
-      color: var(--ink);
-      font-size: 14px;
+    .block-row.active {
+      border-color: rgba(25, 216, 255, 0.9);
+      box-shadow: inset 0 0 0 1px rgba(25, 216, 255, 0.3);
     }
 
-    .net-panel {
-      min-height: 680px;
+    .swatch {
+      width: 18px;
+      height: 18px;
+      border-radius: 5px;
+      border: 1px solid rgba(255, 255, 255, 0.38);
+    }
+
+    .block-meta {
+      min-width: 0;
       display: grid;
-      grid-template-rows: auto 1fr;
+      gap: 1px;
+    }
+
+    .block-meta strong,
+    .block-meta span {
       overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .block-meta span,
+    .small-note {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.35;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 0 9px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      background: rgba(8, 14, 21, 0.72);
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 850;
+      white-space: nowrap;
+    }
+
+    .chip.good {
+      color: #071305;
+      border-color: rgba(168, 239, 50, 0.8);
+      background: var(--lime);
+    }
+
+    .chip.warn {
+      color: #1b1100;
+      border-color: rgba(255, 200, 87, 0.8);
+      background: var(--amber);
+    }
+
+    .chip.bad {
+      color: #fff;
+      border-color: rgba(255, 79, 122, 0.85);
+      background: rgba(255, 79, 122, 0.72);
+    }
+
+    .atlas-panel,
+    .three-panel {
+      min-height: 0;
+      overflow: hidden;
+      display: grid;
+      grid-template-rows: auto 1fr auto;
     }
 
     .panel-head {
+      min-height: 60px;
       display: flex;
       align-items: center;
       justify-content: space-between;
       gap: 12px;
-      min-height: 54px;
       padding: 12px 14px;
       border-bottom: 1px solid var(--line);
-      background: rgba(233, 238, 232, 0.72);
+      background: rgba(18, 28, 38, 0.88);
     }
 
-    .panel-head .sub {
+    .panel-head-actions {
+      display: inline-flex;
+      align-items: center;
+      justify-content: flex-end;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .panel-head-actions button {
+      min-height: 30px;
+      padding: 0 10px;
+      font-size: 12px;
+    }
+
+    .sub {
       display: block;
-      margin-top: 3px;
+      margin-top: 4px;
       color: var(--muted);
       font-size: 12px;
-      font-weight: 620;
-      text-transform: none;
-      letter-spacing: 0;
+      font-weight: 700;
     }
 
-    .net-scroll {
+    .atlas-scroll {
       overflow: auto;
-      padding: 16px;
+      padding: 14px;
     }
 
-    .cube-net {
+    .atlas-list {
       display: grid;
-      grid-template-columns: repeat(4, minmax(118px, 1fr));
-      grid-template-rows: repeat(3, auto);
-      gap: 12px;
-      align-items: start;
-      min-width: 560px;
+      gap: 14px;
     }
 
-    .face-tile {
+    .atlas-group {
       border: 1px solid var(--line);
       border-radius: var(--radius);
       overflow: hidden;
-      background: #fbfcfa;
+      background: rgba(7, 12, 18, 0.62);
     }
 
-    .face-tile[data-face="top"] { grid-column: 2; grid-row: 1; }
-    .face-tile[data-face="left"] { grid-column: 1; grid-row: 2; }
-    .face-tile[data-face="front"] { grid-column: 2; grid-row: 2; }
-    .face-tile[data-face="right"] { grid-column: 3; grid-row: 2; }
-    .face-tile[data-face="back"] { grid-column: 4; grid-row: 2; }
-    .face-tile[data-face="bottom"] { grid-column: 2; grid-row: 3; }
-
-    .face-title {
+    .atlas-title {
       display: flex;
-      align-items: center;
       justify-content: space-between;
-      min-height: 30px;
-      padding: 0 9px;
+      gap: 10px;
+      padding: 9px 10px;
       border-bottom: 1px solid var(--line);
-      background: var(--face-tint, #f4f6f3);
+      background: rgba(25, 216, 255, 0.08);
       font-size: 12px;
-      font-weight: 850;
-      color: #25302c;
+      font-weight: 900;
     }
 
-    .face-axis {
-      color: rgba(23, 32, 29, 0.56);
-      font-family: "SFMono-Regular", Consolas, monospace;
-      font-size: 10px;
+    .atlas-grid-wrap {
+      overflow: auto;
+      padding: 8px;
     }
 
-    .face-grid {
+    .atlas-grid {
       display: grid;
-      grid-template-columns: repeat(var(--face-cols), minmax(0, 1fr));
-      aspect-ratio: var(--face-cols) / var(--face-rows);
-      padding: 6px;
       gap: 3px;
-      background:
-        linear-gradient(135deg, rgba(255, 255, 255, 0.76), rgba(255, 255, 255, 0.34)),
-        var(--face-tint, #f6f8f4);
+      width: max-content;
+      min-width: 100%;
     }
 
-    .cell {
-      position: relative;
-      min-width: 0;
-      aspect-ratio: 1;
-      border: 1px solid rgba(23, 32, 29, 0.12);
-      border-radius: 5px;
-      background: rgba(255, 255, 255, 0.72);
-      transition: transform 120ms ease, border-color 120ms ease, background 120ms ease, box-shadow 120ms ease;
-      cursor: pointer;
-      overflow: hidden;
+    .atlas-cell {
+      width: 18px;
+      height: 18px;
+      min-height: 18px;
+      padding: 0;
+      border-radius: 4px;
+      border-color: rgba(169, 211, 237, 0.32);
+      background: rgba(25, 216, 255, 0.16);
     }
 
-    .cell:hover {
-      transform: translateY(-1px);
-      border-color: rgba(23, 32, 29, 0.32);
-      box-shadow: inset 0 0 0 1px rgba(23, 32, 29, 0.08);
+    .atlas-cell.occupied {
+      background: var(--arrow-color, var(--cyan));
+      border-color: rgba(255, 255, 255, 0.42);
     }
 
-    .cell.blocked {
-      background:
-        repeating-linear-gradient(135deg, rgba(23, 32, 29, 0.18) 0 4px, rgba(23, 32, 29, 0.04) 4px 8px),
-        #d6ddd4;
-      border-color: rgba(23, 32, 29, 0.2);
+    .atlas-cell.blocked {
+      background: rgba(120, 132, 144, 0.75);
     }
 
-    .cell.occupied {
-      background: color-mix(in srgb, var(--arrow-color, #178f83) 72%, white);
-      border-color: color-mix(in srgb, var(--arrow-color, #178f83) 74%, black);
-    }
-
-    .cell.body::before {
-      content: "";
-      position: absolute;
-      inset: 32%;
-      border-radius: 50%;
-      background: color-mix(in srgb, var(--arrow-color, #178f83) 82%, black);
-    }
-
-    .cell.head::after {
-      content: "";
-      position: absolute;
-      left: 50%;
-      top: 50%;
-      width: 0;
-      height: 0;
-      border-left: 7px solid transparent;
-      border-right: 7px solid transparent;
-      border-bottom: 14px solid color-mix(in srgb, var(--arrow-color, #178f83) 78%, black);
-      transform-origin: 50% 55%;
-      filter: drop-shadow(0 1px 0 rgba(255, 255, 255, 0.36));
-    }
-
-    .cell.head.dir-U::after { transform: translate(-50%, -54%) rotate(0deg); }
-    .cell.head.dir-R::after { transform: translate(-48%, -52%) rotate(90deg); }
-    .cell.head.dir-D::after { transform: translate(-50%, -48%) rotate(180deg); }
-    .cell.head.dir-L::after { transform: translate(-52%, -52%) rotate(-90deg); }
-
-    .cell.in-draw {
-      background: color-mix(in srgb, var(--sun) 48%, white);
-      border-color: #a77b14;
-      box-shadow: inset 0 0 0 2px rgba(227, 173, 55, 0.42);
-    }
-
-    .cell.selected {
-      box-shadow: inset 0 0 0 3px rgba(28, 120, 185, 0.62), 0 0 0 2px rgba(28, 120, 185, 0.2);
-      border-color: var(--focus);
-    }
-
-    .cell.removable {
-      box-shadow: inset 0 0 0 2px rgba(87, 150, 95, 0.72);
-    }
-
-    .line-style .cell.occupied {
-      background: #fefefe;
-      border-color: rgba(23, 32, 29, 0.34);
-    }
-
-    .line-style .cell.body::before {
-      inset: 28%;
-      border-radius: 2px;
-      background: #101614;
-    }
-
-    .line-style .cell.head::after {
-      border-bottom-color: #101614;
-    }
-
-    .three-panel {
-      min-height: 680px;
-      height: calc(100vh - 102px);
-      max-height: 900px;
-      position: sticky;
-      top: 88px;
-      display: grid;
-      grid-template-rows: auto minmax(0, 1fr) auto;
-      overflow: hidden;
+    .atlas-cell.selected {
+      outline: 2px solid var(--lime);
+      outline-offset: 1px;
     }
 
     .viewport {
       position: relative;
-      min-height: 420px;
-      height: 100%;
-      overflow: hidden;
-      background:
-        radial-gradient(circle at 30% 28%, rgba(227, 173, 55, 0.17), transparent 34%),
-        linear-gradient(145deg, #f8faf5, #e2ebe5 64%, #d9e3dd);
+      min-height: 520px;
+      background: radial-gradient(circle at 50% 30%, rgba(25, 216, 255, 0.08), transparent 42%), #070d14;
     }
 
     #threeViewport {
-      position: absolute;
-      inset: 0;
+      display: block;
       width: 100%;
       height: 100%;
-      min-height: 0;
-      display: block;
-      touch-action: none;
     }
 
     .viewport-badge {
@@ -637,110 +627,111 @@
       left: 12px;
       bottom: 12px;
       display: flex;
-      gap: 7px;
       flex-wrap: wrap;
+      gap: 8px;
       pointer-events: none;
     }
 
-    .chip {
-      min-height: 26px;
-      display: inline-flex;
-      align-items: center;
-      padding: 0 9px;
-      border: 1px solid rgba(23, 32, 29, 0.16);
-      background: rgba(255, 255, 255, 0.76);
-      border-radius: 999px;
-      color: #34413b;
-      font-size: 12px;
-      font-weight: 750;
-      backdrop-filter: blur(8px);
-    }
-
     .inspector {
+      min-height: 62px;
       display: grid;
       grid-template-columns: 1fr auto;
       align-items: center;
-      gap: 10px;
-      min-height: 58px;
-      padding: 10px 12px;
+      gap: 12px;
+      padding: 12px 14px;
       border-top: 1px solid var(--line);
-      background: rgba(255, 255, 255, 0.7);
-      font-size: 12px;
-      color: var(--muted);
+      background: rgba(18, 28, 38, 0.88);
     }
 
-    .inspector strong {
+    .inspector strong,
+    .inspector span {
       display: block;
-      color: var(--ink);
-      font-size: 13px;
-      margin-bottom: 3px;
+    }
+
+    .inspector span {
+      margin-top: 3px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.38;
     }
 
     .json-dock {
-      margin: 0 14px 14px;
       display: grid;
-      grid-template-columns: minmax(260px, 1fr) auto;
+      grid-template-columns: 1fr 138px;
       gap: 12px;
+      margin: 0 14px 14px;
       padding: 14px;
-      align-items: start;
     }
 
     .json-actions {
       display: grid;
+      align-content: start;
       gap: 8px;
-      min-width: 132px;
+      padding-top: 29px;
     }
 
-    .small-note {
-      margin: 8px 0 0;
-      color: var(--muted);
+    .issue-list {
+      display: grid;
+      gap: 8px;
+      margin-top: 10px;
+      max-height: 160px;
+      overflow: auto;
+    }
+
+    .issue {
+      padding: 8px;
+      border: 1px solid rgba(255, 200, 87, 0.42);
+      border-radius: var(--radius);
+      background: rgba(255, 200, 87, 0.12);
+      color: #ffe2a3;
       font-size: 12px;
+      line-height: 1.35;
     }
 
-    .empty-cell {
-      visibility: hidden;
+    .line-style .atlas-cell.occupied {
+      background: #f4fbff;
     }
 
-    @media (max-width: 1220px) {
+    @media (max-width: 1180px) {
       .workspace {
-        grid-template-columns: 270px 1fr;
+        grid-template-columns: 300px 1fr;
       }
 
       .three-panel {
         grid-column: 1 / -1;
-        min-height: 560px;
-        height: 620px;
-        max-height: none;
-        position: static;
       }
+    }
 
+    @media (max-width: 760px) {
       .topbar {
+        position: static;
         grid-template-columns: 1fr;
-      }
-
-      .stats,
-      .top-actions {
-        justify-content: start;
       }
 
       .stats {
         grid-auto-flow: row;
-        grid-template-columns: repeat(4, minmax(68px, 1fr));
-        width: 100%;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
       }
-    }
 
-    @media (max-width: 820px) {
+      .top-actions {
+        justify-content: stretch;
+      }
+
+      .top-actions button {
+        flex: 1 1 auto;
+      }
+
       .workspace {
         grid-template-columns: 1fr;
         padding: 10px;
       }
 
-      .panel,
-      .net-panel,
-      .three-panel,
-      .json-dock {
-        box-shadow: none;
+      .panel {
+        max-height: none;
+      }
+
+      .viewport {
+        min-height: 430px;
       }
 
       .json-dock {
@@ -748,47 +739,9 @@
         margin: 0 10px 10px;
       }
 
-      .net-scroll,
-      .cube-net {
-        min-width: 0;
-        max-width: 100%;
-      }
-
-      .net-scroll {
-        padding: 10px;
-      }
-
-      .three-panel {
-        height: auto;
-      }
-
-      .viewport {
-        height: 430px;
-      }
-
-      .cube-net {
-        grid-template-columns: repeat(4, minmax(66px, 1fr));
-        gap: 8px;
-      }
-
-      .face-grid {
-        padding: 4px;
-        gap: 2px;
-      }
-
-      .field-grid {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      *,
-      *::before,
-      *::after {
-        transition-duration: 0.01ms !important;
-        animation-duration: 0.01ms !important;
-        animation-iteration-count: 1 !important;
-        scroll-behavior: auto !important;
+      .json-actions {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+        padding-top: 0;
       }
     }
   </style>
@@ -797,90 +750,142 @@
   <div class="app">
     <header class="topbar">
       <div class="brand">
-        <div class="cube-mark" aria-hidden="true"></div>
+        <div class="brand-mark" aria-hidden="true"></div>
         <div>
-          <h1>箭头 3D 长方体编辑器</h1>
+          <h1>3D 箭头组合体编辑器</h1>
           <p class="status-line" id="statusLine">已就绪</p>
         </div>
       </div>
       <div class="stats" aria-live="polite">
+        <div class="stat"><b id="statBlocks">0</b><span>方块</span></div>
+        <div class="stat"><b id="statSurface">0</b><span>表面格</span></div>
         <div class="stat"><b id="statArrows">0</b><span>箭头</span></div>
-        <div class="stat"><b id="statCells">0</b><span>占用格</span></div>
-        <div class="stat"><b id="statFree">216</b><span>空格</span></div>
-        <div class="stat"><b id="statReady">0</b><span>可移除</span></div>
+        <div class="stat"><b id="statIssues">0</b><span>问题</span></div>
       </div>
       <div class="top-actions">
-        <button class="primary" id="btnGenerate" title="生成关卡">生成</button>
-        <button id="btnAdd" title="添加一支箭头">添加</button>
-        <button id="btnCheck" title="校验可解性">校验</button>
-        <button id="btnExport" title="导出关卡 JSON">导出</button>
-        <button class="danger" id="btnClear" title="清空关卡">清空</button>
+        <button class="primary" id="btnGenerate">生成</button>
+        <button id="btnValidate">校验</button>
+        <button id="btnExport">导出</button>
+        <button class="danger" id="btnClearArrows">清箭头</button>
       </div>
     </header>
 
     <main class="workspace">
       <aside class="panel">
         <section class="control-section">
-          <h2 class="panel-title">棋盘</h2>
-          <div class="field-grid" aria-label="长方体尺寸配置">
-            <div class="field">
-              <label for="inputBoxWidth">宽 W</label>
-              <input id="inputBoxWidth" type="number" min="3" max="16" step="1" value="7">
-            </div>
-            <div class="field">
-              <label for="inputBoxHeight">高 H</label>
-              <input id="inputBoxHeight" type="number" min="3" max="16" step="1" value="5">
-            </div>
-            <div class="field wide">
-              <label for="inputBoxDepth">深 D</label>
-              <input id="inputBoxDepth" type="number" min="3" max="16" step="1" value="4">
-            </div>
-          </div>
+          <h2 class="panel-title">结构</h2>
           <div class="button-grid">
-            <button id="btnApplyBoxSize" class="wide">应用尺寸</button>
+            <button class="primary" id="btnAddBlock">自由添加</button>
+            <button class="lime" id="btnAttachBlock">贴面添加</button>
+            <button id="btnDuplicateBlock">复制</button>
+            <button class="danger" id="btnDeleteBlock">删除</button>
           </div>
-          <p class="small-note" id="boxDimsReadout">front/back 5×7 · left/right 5×4 · top/bottom 4×7</p>
           <div class="field-grid">
             <div class="field">
-              <label for="inputFillRate">填充率</label>
-              <input id="inputFillRate" type="number" min="0.1" max="0.9" step="0.05" value="0.52">
+              <label for="inputSnap">角度吸附</label>
+              <select id="inputSnap">
+                <option value="15">15°</option>
+                <option value="30">30°</option>
+                <option value="45">45°</option>
+                <option value="90">90°</option>
+              </select>
             </div>
-            <div class="field wide">
-              <label for="inputLengthWeights">长度权重</label>
-              <input id="inputLengthWeights" type="text" value="1:8,2:20,3:30,4:24,5:12,6:6">
-            </div>
-            <div class="field wide">
-              <label for="inputBendWeights">弯折权重</label>
-              <input id="inputBendWeights" type="text" value="0:40,1:35,2:20,3:5">
+            <div class="field">
+              <label for="inputDebugCovered">覆盖格</label>
+              <div class="toggle-line">
+                <span>显示</span>
+                <input id="inputDebugCovered" type="checkbox" role="switch">
+              </div>
             </div>
           </div>
+          <div class="block-list" id="blockList"></div>
         </section>
 
         <section class="control-section">
-          <h2 class="panel-title">3D 生成</h2>
+          <h2 class="panel-title">选中 Block</h2>
           <div class="field-grid">
             <div class="field">
-              <label for="inputCrossRate">跨面概率</label>
-              <input id="inputCrossRate" type="number" min="0" max="1" step="0.05" value="0.22">
+              <label for="inputSizeW">宽 W</label>
+              <input id="inputSizeW" type="number" min="1" max="24" step="1">
             </div>
             <div class="field">
-              <label for="inputMaxCrossings">最大跨面</label>
-              <input id="inputMaxCrossings" type="number" min="0" max="8" step="1" value="3">
+              <label for="inputSizeH">高 H</label>
+              <input id="inputSizeH" type="number" min="1" max="24" step="1">
+            </div>
+            <div class="field">
+              <label for="inputSizeD">深 D</label>
+              <input id="inputSizeD" type="number" min="1" max="24" step="1">
+            </div>
+            <div class="field">
+              <label for="inputMoveStep">移动步长</label>
+              <select id="inputMoveStep">
+                <option value="1">1 格</option>
+                <option value="2">2 格</option>
+                <option value="4">4 格</option>
+              </select>
             </div>
           </div>
           <div class="button-grid">
-            <button id="btnFillBlocks" class="wide">空格设禁区</button>
-            <button id="btnClearBlocks">清禁区</button>
-            <button id="btnResetView">重置视角</button>
+            <button class="wide" id="btnMoveBlockToCell">移动到选中表面</button>
+            <button class="wide" id="btnApplyBlock">应用尺寸/参数</button>
           </div>
+          <p class="control-subtitle">移动微调</p>
+          <div class="axis-grid" aria-label="Block 移动微调">
+            <button data-move-axis="0" data-move-delta="-1">X -</button>
+            <button data-move-axis="1" data-move-delta="-1">Y -</button>
+            <button data-move-axis="2" data-move-delta="-1">Z -</button>
+            <button data-move-axis="0" data-move-delta="1">X +</button>
+            <button data-move-axis="1" data-move-delta="1">Y +</button>
+            <button data-move-axis="2" data-move-delta="1">Z +</button>
+          </div>
+          <p class="control-subtitle">旋转微调</p>
+          <div class="axis-grid" aria-label="Block 旋转微调">
+            <button data-rotate-axis="0" data-rotate-delta="-1">X -</button>
+            <button data-rotate-axis="1" data-rotate-delta="-1">Y -</button>
+            <button data-rotate-axis="2" data-rotate-delta="-1">Z -</button>
+            <button data-rotate-axis="0" data-rotate-delta="1">X +</button>
+            <button data-rotate-axis="1" data-rotate-delta="1">Y +</button>
+            <button data-rotate-axis="2" data-rotate-delta="1">Z +</button>
+          </div>
+          <details class="exact-panel">
+            <summary>精确坐标与角度</summary>
+            <div class="field-grid">
+            <div class="field">
+              <label for="inputPosX">位置 X</label>
+              <input id="inputPosX" type="number" step="0.5">
+            </div>
+            <div class="field">
+              <label for="inputPosY">位置 Y</label>
+              <input id="inputPosY" type="number" step="0.5">
+            </div>
+            <div class="field">
+              <label for="inputPosZ">位置 Z</label>
+              <input id="inputPosZ" type="number" step="0.5">
+            </div>
+            <div class="field">
+              <label for="inputRotX">旋转 X</label>
+              <input id="inputRotX" type="number" step="1">
+            </div>
+            <div class="field">
+              <label for="inputRotY">旋转 Y</label>
+              <input id="inputRotY" type="number" step="1">
+            </div>
+            <div class="field">
+              <label for="inputRotZ">旋转 Z</label>
+              <input id="inputRotZ" type="number" step="1">
+            </div>
+          </div>
+          </details>
+          <p class="small-note" id="selectedBlockNote">未选中 Block</p>
         </section>
 
         <section class="control-section">
           <h2 class="panel-title">模式</h2>
           <div class="segmented" role="group" aria-label="编辑模式">
-            <button id="modePlay" class="active" data-mode="play">试玩</button>
-            <button id="modeDraw" data-mode="draw">绘制</button>
-            <button id="modeBlock" data-mode="block">禁区</button>
+            <button class="active" data-mode="structure">结构</button>
+            <button data-mode="play">试玩</button>
+            <button data-mode="draw">绘制</button>
+            <button data-mode="block">禁区</button>
           </div>
           <div class="field-grid">
             <div class="field">
@@ -900,57 +905,83 @@
               </div>
             </div>
           </div>
-          <div class="draw-strip">
+          <div class="button-grid">
             <button id="btnUndoDraw">撤销路径</button>
             <button id="btnFinishDraw">完成绘制</button>
           </div>
         </section>
 
         <section class="control-section">
-          <h2 class="panel-title">选中</h2>
-          <div class="selected-readout" id="selectedReadout">
-            <strong>未选中</strong>
-            <span>箭头路径会同步显示在展开图与正方体上。</span>
+          <h2 class="panel-title">生成参数</h2>
+          <div class="field-grid">
+            <div class="field">
+              <label for="inputFillRate">填充率</label>
+              <input id="inputFillRate" type="number" min="0.05" max="0.88" step="0.05" value="0.34">
+            </div>
+            <div class="field">
+              <label for="inputCrossRate">跨面概率</label>
+              <input id="inputCrossRate" type="number" min="0" max="1" step="0.05" value="0.25">
+            </div>
+            <div class="field wide">
+              <label for="inputLengthWeights">长度权重</label>
+              <input id="inputLengthWeights" type="text" value="2:20,3:30,4:24,5:14,6:8">
+            </div>
+            <div class="field wide">
+              <label for="inputBendWeights">弯折权重</label>
+              <input id="inputBendWeights" type="text" value="0:32,1:38,2:24,3:6">
+            </div>
           </div>
-          <div class="button-grid">
-            <button id="btnRemoveSelected">移除</button>
-            <button id="btnDeleteSelected">删除</button>
-          </div>
+        </section>
+
+        <section class="control-section">
+          <h2 class="panel-title">校验</h2>
+          <div class="issue-list" id="issueList"></div>
         </section>
       </aside>
 
-      <section class="net-panel">
+      <section class="atlas-panel">
         <div class="panel-head">
           <div>
-            <h2 class="section-title">展开图</h2>
-            <span class="sub" id="netSub">front 为主面，路径按共享边连续跨越</span>
+            <h2 class="section-title">表面图集</h2>
+            <span class="sub" id="atlasSub">按最终外表面平面分组</span>
           </div>
-          <span class="chip" id="modeChip">试玩</span>
+          <span class="chip" id="mapChip">未校验</span>
         </div>
-        <div class="net-scroll">
-          <div class="cube-net" id="cubeNet"></div>
+        <div class="atlas-scroll">
+          <div class="atlas-list" id="atlasList"></div>
+        </div>
+        <div class="inspector">
+          <div>
+            <strong id="atlasTitle">未选中表面格</strong>
+            <span id="atlasBody">点击 3D 表面格或图集格子后显示 Block、面、路径信息。</span>
+          </div>
+          <button id="btnClearBlocks">清禁区</button>
         </div>
       </section>
 
       <section class="three-panel">
         <div class="panel-head">
           <div>
-            <h2 class="section-title">3D 长方体</h2>
-            <span class="sub" id="threeSub">Orbit camera</span>
+            <h2 class="section-title">3D 组合体</h2>
+            <span class="sub" id="threeSub">拖动旋转 · 滚轮缩放</span>
           </div>
-          <span class="chip" id="solveChip">未校验</span>
+          <div class="panel-head-actions">
+            <button id="btnResetCamera">复位视角</button>
+            <span class="chip" id="solveChip">未校验</span>
+          </div>
         </div>
         <div class="viewport" id="viewportHost">
           <canvas id="threeViewport"></canvas>
           <div class="viewport-badge">
-            <span class="chip" id="boxSizeChip">7 × 5 × 4</span>
+            <span class="chip" id="cellChip">0 cells</span>
             <span class="chip" id="selectedChip">无选中</span>
+            <span class="chip" id="snapChip">15° snap</span>
           </div>
         </div>
         <div class="inspector">
           <div>
-            <strong id="inspectorTitle">局部射线</strong>
-            <span id="inspectorBody">选择箭头后显示头部所在面的阻挡判断。</span>
+            <strong id="inspectorTitle">结构射线</strong>
+            <span id="inspectorBody">组合体表面由 Block 原始外表面裁剪后生成。</span>
           </div>
           <button id="btnSolveStep">移除一批</button>
         </div>
@@ -961,7 +992,7 @@
       <div>
         <h2 class="section-title">JSON</h2>
         <textarea id="jsonBox" spellcheck="false"></textarea>
-        <p class="small-note" id="jsonNote">SchemaVersion 3，BoxSize 使用 width/height/depth，Path 使用 face:r_c。</p>
+        <p class="small-note" id="jsonNote">SchemaVersion 4，Blocks 生成最终 Surface Graph。</p>
       </div>
       <div class="json-actions">
         <button id="btnImport">导入</button>
@@ -975,78 +1006,73 @@
     import * as THREE from "three";
     import { OrbitControls } from "./vendor/OrbitControls.js";
 
-    const FACES = ["top", "left", "front", "right", "back", "bottom"];
-    const FACE_LABELS = {
-      top: "top",
-      left: "left",
-      front: "front",
-      right: "right",
-      back: "back",
-      bottom: "bottom"
-    };
-    const FACE_TINTS = {
-      front: "#e3f2ed",
-      right: "#f6eadb",
-      back: "#ece7f3",
-      left: "#e7f0dc",
-      top: "#f7f0ce",
-      bottom: "#e7edf4"
-    };
+    const FACES = ["front", "right", "back", "left", "top", "bottom"];
     const DIRS = {
       U: { dr: -1, dc: 0 },
       D: { dr: 1, dc: 0 },
       L: { dr: 0, dc: -1 },
       R: { dr: 0, dc: 1 }
     };
-    const OPPOSITE_DIR = {
-      U: "D",
-      D: "U",
-      L: "R",
-      R: "L"
-    };
-    const PALETTE = [
-      "#178f83", "#c56b36", "#57965f", "#bf4360", "#1c78b9", "#d79b25",
-      "#6f7f39", "#b35a8b", "#337d5a", "#9a6a2e", "#4d75a8", "#9f4d43"
-    ];
-    const DEFAULT_BOX_SIZE = { width: 7, height: 5, depth: 4 };
+    const OPPOSITE_DIR = { U: "D", D: "U", L: "R", R: "L" };
+    const PALETTE = ["#19d8ff", "#b875ff", "#a8ef32", "#ff4f7a", "#ffc857", "#43e6a1", "#ff8f5f", "#77a8ff"];
+    const BLOCK_COLORS = ["#19d8ff", "#b875ff", "#a8ef32", "#ff8f5f", "#77a8ff", "#ffc857"];
+    const EPS = 1e-4;
+    const HASH_SCALE = 1000;
 
     const state = {
       level: 1,
-      boxSize: cloneBoxSize(DEFAULT_BOX_SIZE),
-      faceDims: boxSizeToSurfaceDims(DEFAULT_BOX_SIZE),
+      snapAngle: 15,
+      mode: "structure",
+      blocks: [],
+      surface: emptySurface(),
       arrows: [],
       gridMap: new Map(),
       blockedCells: new Set(),
+      selectedBlockId: null,
+      selectedCellId: null,
       selectedArrowId: null,
-      mode: "play",
       drawPath: [],
       lineStyle: false,
+      showCovered: false,
       lastSolve: null
     };
 
     const els = {
       statusLine: document.getElementById("statusLine"),
+      statBlocks: document.getElementById("statBlocks"),
+      statSurface: document.getElementById("statSurface"),
       statArrows: document.getElementById("statArrows"),
-      statCells: document.getElementById("statCells"),
-      statFree: document.getElementById("statFree"),
-      statReady: document.getElementById("statReady"),
-      inputBoxWidth: document.getElementById("inputBoxWidth"),
-      inputBoxHeight: document.getElementById("inputBoxHeight"),
-      inputBoxDepth: document.getElementById("inputBoxDepth"),
+      statIssues: document.getElementById("statIssues"),
+      blockList: document.getElementById("blockList"),
+      inputSnap: document.getElementById("inputSnap"),
+      inputDebugCovered: document.getElementById("inputDebugCovered"),
+      inputSizeW: document.getElementById("inputSizeW"),
+      inputSizeH: document.getElementById("inputSizeH"),
+      inputSizeD: document.getElementById("inputSizeD"),
+      inputMoveStep: document.getElementById("inputMoveStep"),
+      inputPosX: document.getElementById("inputPosX"),
+      inputPosY: document.getElementById("inputPosY"),
+      inputPosZ: document.getElementById("inputPosZ"),
+      inputRotX: document.getElementById("inputRotX"),
+      inputRotY: document.getElementById("inputRotY"),
+      inputRotZ: document.getElementById("inputRotZ"),
+      selectedBlockNote: document.getElementById("selectedBlockNote"),
       inputFillRate: document.getElementById("inputFillRate"),
       inputLengthWeights: document.getElementById("inputLengthWeights"),
       inputBendWeights: document.getElementById("inputBendWeights"),
       inputCrossRate: document.getElementById("inputCrossRate"),
-      inputMaxCrossings: document.getElementById("inputMaxCrossings"),
       drawDirection: document.getElementById("drawDirection"),
       lineStyle: document.getElementById("lineStyle"),
-      cubeNet: document.getElementById("cubeNet"),
-      modeChip: document.getElementById("modeChip"),
-      boxSizeChip: document.getElementById("boxSizeChip"),
-      boxDimsReadout: document.getElementById("boxDimsReadout"),
-      selectedChip: document.getElementById("selectedChip"),
+      issueList: document.getElementById("issueList"),
+      atlasList: document.getElementById("atlasList"),
+      atlasSub: document.getElementById("atlasSub"),
+      atlasTitle: document.getElementById("atlasTitle"),
+      atlasBody: document.getElementById("atlasBody"),
+      mapChip: document.getElementById("mapChip"),
       solveChip: document.getElementById("solveChip"),
-      selectedReadout: document.getElementById("selectedReadout"),
+      cellChip: document.getElementById("cellChip"),
+      selectedChip: document.getElementById("selectedChip"),
+      snapChip: document.getElementById("snapChip"),
       inspectorTitle: document.getElementById("inspectorTitle"),
       inspectorBody: document.getElementById("inspectorBody"),
       jsonBox: document.getElementById("jsonBox"),
@@ -1059,11 +1085,23 @@
     let camera;
     let renderer;
     let controls;
-    let cubeGroup;
+    let worldGroup;
     let raycaster;
     let pointer;
     let pointerDown = null;
     let animationHandle = null;
+
+    function emptySurface() {
+      return {
+        rawCells: [],
+        coveredCells: [],
+        cells: new Map(),
+        graph: new Map(),
+        issues: [],
+        components: [],
+        canGenerate: false
+      };
+    }
 
     function clamp(value, min, max) {
       return Math.max(min, Math.min(max, value));
@@ -1082,266 +1120,352 @@
       return out;
     }
 
-    function sameCell(a, b) {
-      return a.face === b.face && a.r === b.r && a.c === b.c;
+    function vec(x, y, z) {
+      return new THREE.Vector3(x, y, z);
     }
 
-    function cloneBoxSize(size) {
+    function cloneArray(values) {
+      return values.map((value) => Number(value));
+    }
+
+    function roundTo(value, step) {
+      return Math.round(value / step) * step;
+    }
+
+    function nextBlockId() {
+      const used = new Set(state.blocks.map((block) => block.id));
+      for (let i = 0; i < 26; i += 1) {
+        const id = String.fromCharCode(65 + i);
+        if (!used.has(id)) return id;
+      }
+      let n = state.blocks.length + 1;
+      while (used.has(`B${n}`)) n += 1;
+      return `B${n}`;
+    }
+
+    function normalizeBlock(raw, fallbackId = nextBlockId()) {
+      const size = cloneArray(raw.Size || raw.size || [4, 4, 4]).map((value) => clamp(Math.round(value || 1), 1, 24));
+      const position = cloneArray(raw.Position || raw.position || [0, 0, 0]).map((value) => Number.isFinite(value) ? value : 0);
+      const rotationDeg = cloneArray(raw.RotationDeg || raw.rotationDeg || [0, 0, 0]).map((value) => Number.isFinite(value) ? value : 0);
       return {
-        width: Number(size?.width),
-        height: Number(size?.height),
-        depth: Number(size?.depth)
+        id: String(raw.Id || raw.id || fallbackId),
+        size,
+        position,
+        rotationDeg,
+        rotationOrder: raw.RotationOrder || raw.rotationOrder || "XYZ",
+        color: raw.Color || raw.color || BLOCK_COLORS[state.blocks.length % BLOCK_COLORS.length],
+        locked: Boolean(raw.Locked ?? raw.locked),
+        visible: raw.Visible ?? raw.visible ?? true
       };
     }
 
-    function normalizeBoxSize(raw) {
-      const box = cloneBoxSize(raw);
-      for (const key of ["width", "height", "depth"]) {
-        const value = Math.round(Number(box[key]));
-        if (!Number.isInteger(value) || value < 3 || value > 16) {
-          throw new Error("宽、高、深必须都是 3 到 16 的整数");
-        }
-        box[key] = value;
-      }
-      return box;
-    }
-
-    function boxSizeToSurfaceDims(size) {
-      const box = normalizeBoxSize(size);
+    function blockToJson(block) {
       return {
-        front: { rows: box.height, cols: box.width },
-        right: { rows: box.height, cols: box.depth },
-        back: { rows: box.height, cols: box.width },
-        left: { rows: box.height, cols: box.depth },
-        top: { rows: box.depth, cols: box.width },
-        bottom: { rows: box.depth, cols: box.width }
+        Id: block.id,
+        Size: cloneArray(block.size),
+        Position: block.position.map((value) => Number(value.toFixed(3))),
+        RotationDeg: block.rotationDeg.map((value) => Number(value.toFixed(3))),
+        RotationOrder: block.rotationOrder,
+        Color: block.color,
+        Locked: block.locked,
+        Visible: block.visible
       };
     }
 
-    function setBoxSize(box) {
-      state.boxSize = normalizeBoxSize(box);
-      state.faceDims = boxSizeToSurfaceDims(state.boxSize);
+    function blockQuaternion(block) {
+      return new THREE.Quaternion().setFromEuler(new THREE.Euler(
+        THREE.MathUtils.degToRad(block.rotationDeg[0]),
+        THREE.MathUtils.degToRad(block.rotationDeg[1]),
+        THREE.MathUtils.degToRad(block.rotationDeg[2]),
+        block.rotationOrder || "XYZ"
+      ));
     }
 
-    function boxSizeSummary(size = state.boxSize) {
-      const box = normalizeBoxSize(size);
-      return `${box.width} × ${box.height} × ${box.depth}`;
+    function localToWorld(block, point) {
+      return point.clone().applyQuaternion(blockQuaternion(block)).add(vec(...block.position));
     }
 
-    function boxDerivedFacesSummary(dims = state.faceDims) {
-      return [
-        `front/back ${dims.front.rows}×${dims.front.cols}`,
-        `left/right ${dims.left.rows}×${dims.left.cols}`,
-        `top/bottom ${dims.top.rows}×${dims.top.cols}`
-      ].join(" · ");
+    function worldToLocal(block, point) {
+      return point.clone().sub(vec(...block.position)).applyQuaternion(blockQuaternion(block).invert());
     }
 
-    function faceRows(face, dims = state.faceDims) {
-      return dims[face].rows;
+    function normalToWorld(block, normal) {
+      return normal.clone().applyQuaternion(blockQuaternion(block)).normalize();
     }
 
-    function faceCols(face, dims = state.faceDims) {
-      return dims[face].cols;
+    function faceSpec(block, face) {
+      const [W, H, D] = block.size;
+      const specs = {
+        front: { rows: H, cols: W, normal: vec(0, 0, 1), u: vec(1, 0, 0), v: vec(0, -1, 0), half: D / 2 },
+        back: { rows: H, cols: W, normal: vec(0, 0, -1), u: vec(-1, 0, 0), v: vec(0, -1, 0), half: D / 2 },
+        right: { rows: H, cols: D, normal: vec(1, 0, 0), u: vec(0, 0, -1), v: vec(0, -1, 0), half: W / 2 },
+        left: { rows: H, cols: D, normal: vec(-1, 0, 0), u: vec(0, 0, 1), v: vec(0, -1, 0), half: W / 2 },
+        top: { rows: D, cols: W, normal: vec(0, 1, 0), u: vec(1, 0, 0), v: vec(0, 0, 1), half: H / 2 },
+        bottom: { rows: D, cols: W, normal: vec(0, -1, 0), u: vec(1, 0, 0), v: vec(0, 0, -1), half: H / 2 }
+      };
+      return specs[face];
     }
 
-    function faceCellCount(face, dims = state.faceDims) {
-      return faceRows(face, dims) * faceCols(face, dims);
-    }
-
-    function totalCellCount(dims = state.faceDims) {
-      return FACES.reduce((sum, face) => sum + faceCellCount(face, dims), 0);
-    }
-
-    function boxMeasures(dims = state.faceDims) {
+    function edgeFromCorners(corners, dir) {
+      const [tl, tr, br, bl] = corners;
+      const endpoints = {
+        U: [tl, tr],
+        D: [bl, br],
+        L: [tl, bl],
+        R: [tr, br]
+      }[dir];
+      const a = endpoints[0];
+      const b = endpoints[1];
       return {
-        width: dims.front.cols,
-        height: dims.front.rows,
-        depth: dims.left.cols
+        a,
+        b,
+        center: a.clone().add(b).multiplyScalar(0.5),
+        dir: b.clone().sub(a).normalize(),
+        length: a.distanceTo(b)
       };
     }
 
-    function cellKey(cell) {
-      return `${cell.face}:${cell.r},${cell.c}`;
-    }
-
-    function pathToken(cell) {
-      return `${cell.face}:${cell.r}_${cell.c}`;
-    }
-
-    function parsePathToken(token) {
-      if (typeof token !== "string") throw new Error("Path 必须是字符串数组");
-      const [face, rc] = token.split(":");
-      if (!face || !rc) throw new Error(`Path 格式错误：${token}`);
-      const [rRaw, cRaw] = rc.split("_");
-      const r = Number(rRaw);
-      const c = Number(cRaw);
-      if (!Number.isInteger(r) || !Number.isInteger(c)) throw new Error(`Path 坐标错误：${token}`);
-      return { face, r, c };
-    }
-
-    function parseBlockToken(token) {
-      if (typeof token !== "string") throw new Error("BlockedCells 必须是字符串数组");
-      if (token.includes(":") && token.includes("_")) return parsePathToken(token);
-      if (token.includes(":") && token.includes(",")) {
-        const [face, rc] = token.split(":");
-        const [rRaw, cRaw] = rc.split(",");
-        return { face, r: Number(rRaw), c: Number(cRaw) };
-      }
-      throw new Error(`禁区格式错误：${token}`);
-    }
-
-    function isInBounds(cell, dims = state.faceDims) {
-      return FACES.includes(cell.face) &&
-        Number.isInteger(cell.r) &&
-        Number.isInteger(cell.c) &&
-        cell.r >= 0 &&
-        cell.c >= 0 &&
-        cell.r < faceRows(cell.face, dims) &&
-        cell.c < faceCols(cell.face, dims);
-    }
-
-    function getCrossFaceStep(cell, dir, dims = state.faceDims) {
-      const { width: W, height: H, depth: D } = boxMeasures(dims);
-      const { face, r, c } = cell;
-      const pack = (nextFace, nextR, nextC, nextDir) => ({
-        cell: { face: nextFace, r: nextR, c: nextC },
-        dir: nextDir,
-        crossed: true
-      });
-
-      if (face === "front") {
-        if (dir === "U") return pack("top", D - 1, c, "U");
-        if (dir === "D") return pack("bottom", 0, c, "D");
-        if (dir === "L") return pack("left", r, D - 1, "L");
-        if (dir === "R") return pack("right", r, 0, "R");
-      }
-
-      if (face === "right") {
-        if (dir === "U") return pack("top", D - 1 - c, W - 1, "L");
-        if (dir === "D") return pack("bottom", c, W - 1, "L");
-        if (dir === "L") return pack("front", r, W - 1, "L");
-        if (dir === "R") return pack("back", r, 0, "R");
-      }
-
-      if (face === "back") {
-        if (dir === "U") return pack("top", 0, W - 1 - c, "D");
-        if (dir === "D") return pack("bottom", D - 1, W - 1 - c, "U");
-        if (dir === "L") return pack("right", r, D - 1, "L");
-        if (dir === "R") return pack("left", r, 0, "R");
-      }
-
-      if (face === "left") {
-        if (dir === "U") return pack("top", c, 0, "R");
-        if (dir === "D") return pack("bottom", D - 1 - c, 0, "R");
-        if (dir === "L") return pack("back", r, W - 1, "L");
-        if (dir === "R") return pack("front", r, 0, "R");
-      }
-
-      if (face === "top") {
-        if (dir === "U") return pack("back", 0, W - 1 - c, "D");
-        if (dir === "D") return pack("front", 0, c, "D");
-        if (dir === "L") return pack("left", 0, r, "D");
-        if (dir === "R") return pack("right", 0, D - 1 - r, "D");
-      }
-
-      if (face === "bottom") {
-        if (dir === "U") return pack("front", H - 1, c, "U");
-        if (dir === "D") return pack("back", H - 1, W - 1 - c, "U");
-        if (dir === "L") return pack("left", H - 1, D - 1 - r, "U");
-        if (dir === "R") return pack("right", H - 1, r, "U");
-      }
-
-      throw new Error(`未知跨面：${face} ${dir}`);
-    }
-
-    function getSurfaceStep(cell, dir, dims = state.faceDims) {
-      const delta = DIRS[dir];
-      const nr = cell.r + delta.dr;
-      const nc = cell.c + delta.dc;
-      if (nr >= 0 && nc >= 0 && nr < faceRows(cell.face, dims) && nc < faceCols(cell.face, dims)) {
-        return { cell: { face: cell.face, r: nr, c: nc }, dir, crossed: false };
-      }
-      return getCrossFaceStep(cell, dir, dims);
-    }
-
-    function getSurfaceNeighbors(cell, dims = state.faceDims) {
-      return Object.keys(DIRS).map((dir) => getSurfaceStep(cell, dir, dims));
-    }
-
-    function areSurfaceNeighbors(a, b, dims = state.faceDims) {
-      return getSurfaceNeighbors(a, dims).some((step) => sameCell(step.cell, b));
-    }
-
-    function getLocalRayOnFace(head, dir, dims = state.faceDims) {
-      const ray = [];
-      const delta = DIRS[dir];
-      let r = head.r + delta.dr;
-      let c = head.c + delta.dc;
-      while (r >= 0 && c >= 0 && r < faceRows(head.face, dims) && c < faceCols(head.face, dims)) {
-        ray.push({ face: head.face, r, c });
-        r += delta.dr;
-        c += delta.dc;
-      }
-      return ray;
-    }
-
-    function getSurfaceForwardRay(head, dir, dims = state.faceDims) {
-      const ray = [];
-      let step = getSurfaceStep(head, dir, dims);
-      let currentDir = step.dir;
-      const seen = new Set([cellKey(head)]);
-      let crossed = false;
-      const guardLimit = totalCellCount(dims) + 8;
-      for (let i = 0; i < guardLimit; i += 1) {
-        if (step.crossed && crossed) break;
-        if (step.crossed) crossed = true;
-        const key = cellKey(step.cell);
-        if (seen.has(key)) break;
-        ray.push(step.cell);
-        seen.add(key);
-        currentDir = step.dir;
-        step = getSurfaceStep(step.cell, currentDir, dims);
-      }
-      return ray;
-    }
-
-    function allCells() {
+    function generateBlockSurfaceCells(block) {
       const cells = [];
       for (const face of FACES) {
-        for (let r = 0; r < faceRows(face); r += 1) {
-          for (let c = 0; c < faceCols(face); c += 1) {
-            cells.push({ face, r, c });
+        const spec = faceSpec(block, face);
+        for (let r = 0; r < spec.rows; r += 1) {
+          for (let c = 0; c < spec.cols; c += 1) {
+            const localCenter = spec.normal.clone().multiplyScalar(spec.half)
+              .add(spec.u.clone().multiplyScalar(c + 0.5 - spec.cols / 2))
+              .add(spec.v.clone().multiplyScalar(r + 0.5 - spec.rows / 2));
+            const localCorners = [
+              localCenter.clone().add(spec.u.clone().multiplyScalar(-0.5)).add(spec.v.clone().multiplyScalar(-0.5)),
+              localCenter.clone().add(spec.u.clone().multiplyScalar(0.5)).add(spec.v.clone().multiplyScalar(-0.5)),
+              localCenter.clone().add(spec.u.clone().multiplyScalar(0.5)).add(spec.v.clone().multiplyScalar(0.5)),
+              localCenter.clone().add(spec.u.clone().multiplyScalar(-0.5)).add(spec.v.clone().multiplyScalar(0.5))
+            ];
+            const corners = localCorners.map((corner) => localToWorld(block, corner));
+            const center = localToWorld(block, localCenter);
+            const normal = normalToWorld(block, spec.normal);
+            const tangentU = normalToWorld(block, spec.u);
+            const tangentV = normalToWorld(block, spec.v);
+            const id = `${block.id}:${face}:${r}_${c}`;
+            cells.push({
+              id,
+              blockId: block.id,
+              face,
+              r,
+              c,
+              rows: spec.rows,
+              cols: spec.cols,
+              center,
+              normal,
+              tangentU,
+              tangentV,
+              corners,
+              edges: {
+                U: edgeFromCorners(corners, "U"),
+                D: edgeFromCorners(corners, "D"),
+                L: edgeFromCorners(corners, "L"),
+                R: edgeFromCorners(corners, "R")
+              },
+              removedReason: null
+            });
           }
         }
       }
       return cells;
     }
 
-    function rebuildGrid(arrows = state.arrows) {
-      const grid = new Map();
-      for (const arrow of arrows) {
-        for (const cell of arrow.path) {
-          grid.set(cellKey(cell), arrow.id);
+    function isInsideOrFaceContact(localPoint, size) {
+      const half = size.map((value) => value / 2);
+      const abs = [Math.abs(localPoint.x), Math.abs(localPoint.y), Math.abs(localPoint.z)];
+      if (abs.some((value, index) => value > half[index] + EPS)) return false;
+      const boundaryCount = abs.filter((value, index) => value > half[index] - EPS).length;
+      return boundaryCount <= 1;
+    }
+
+    function isCellCoveredByBlock(cell, block) {
+      if (cell.blockId === block.id || !block.visible) return false;
+      return isInsideOrFaceContact(worldToLocal(block, cell.center), block.size);
+    }
+
+    function q(value) {
+      return Math.round(value * HASH_SCALE);
+    }
+
+    function pointKey(point) {
+      return `${q(point.x)},${q(point.y)},${q(point.z)}`;
+    }
+
+    function canonicalEdgeKey(edge) {
+      const a = pointKey(edge.a);
+      const b = pointKey(edge.b);
+      return a < b ? `${a}|${b}` : `${b}|${a}`;
+    }
+
+    function normalKey(normal) {
+      return `${q(normal.x)},${q(normal.y)},${q(normal.z)}`;
+    }
+
+    function planeKey(cell) {
+      return `${normalKey(cell.normal)}|${q(cell.normal.dot(cell.center))}`;
+    }
+
+    function directedKey(cellId, dir) {
+      return `${cellId}|${dir}`;
+    }
+
+    function relationBetween(a, b) {
+      return a.normal.dot(b.normal) > 0.985 && Math.abs(a.normal.dot(a.center) - b.normal.dot(b.center)) < 0.01
+        ? "coplanar"
+        : "edge_fold";
+    }
+
+    function buildSurface() {
+      const rawCells = state.blocks.filter((block) => block.visible).flatMap(generateBlockSurfaceCells);
+      const visible = [];
+      const covered = [];
+
+      for (const cell of rawCells) {
+        const cover = state.blocks.find((block) => isCellCoveredByBlock(cell, block));
+        if (cover) {
+          cell.removedReason = `covered_by:${cover.id}`;
+          covered.push(cell);
+        } else {
+          visible.push(cell);
         }
       }
-      return grid;
+
+      const cells = new Map(visible.map((cell) => [cell.id, cell]));
+      const graph = new Map();
+      const issues = [];
+      const buckets = new Map();
+
+      for (const cell of visible) {
+        for (const dir of Object.keys(DIRS)) {
+          const edge = cell.edges[dir];
+          const key = canonicalEdgeKey(edge);
+          if (!buckets.has(key)) buckets.set(key, []);
+          buckets.get(key).push({ cell, dir, edge });
+        }
+      }
+
+      for (const entries of buckets.values()) {
+        if (entries.length === 2) {
+          const [a, b] = entries;
+          const relation = relationBetween(a.cell, b.cell);
+          graph.set(directedKey(a.cell.id, a.dir), {
+            from: a.cell.id,
+            fromDir: a.dir,
+            to: b.cell.id,
+            toDir: OPPOSITE_DIR[b.dir],
+            relation
+          });
+          graph.set(directedKey(b.cell.id, b.dir), {
+            from: b.cell.id,
+            fromDir: b.dir,
+            to: a.cell.id,
+            toDir: OPPOSITE_DIR[a.dir],
+            relation
+          });
+        } else if (entries.length > 2) {
+          for (const entry of entries) {
+            issues.push({
+              type: "ambiguous_edge",
+              cellId: entry.cell.id,
+              dir: entry.dir,
+              candidates: entries.filter((item) => item.cell.id !== entry.cell.id).map((item) => item.cell.id)
+            });
+          }
+        }
+      }
+
+      const components = findComponents(cells, graph);
+      if (!cells.size) issues.push({ type: "empty_surface" });
+      if (components.length > 1) {
+        issues.push({
+          type: "disconnected_surface",
+          components: components.map((component, index) => ({ id: index, cellCount: component.length }))
+        });
+      }
+
+      state.surface = {
+        rawCells,
+        coveredCells: covered,
+        cells,
+        graph,
+        issues,
+        components,
+        canGenerate: cells.size > 0 && issues.length === 0
+      };
+
+      pruneInvalidCells();
     }
 
-    function syncGrid() {
-      state.gridMap = rebuildGrid();
+    function findComponents(cells, graph) {
+      const seen = new Set();
+      const components = [];
+      for (const id of cells.keys()) {
+        if (seen.has(id)) continue;
+        const queue = [id];
+        const component = [];
+        seen.add(id);
+        while (queue.length) {
+          const current = queue.shift();
+          component.push(current);
+          for (const dir of Object.keys(DIRS)) {
+            const step = graph.get(directedKey(current, dir));
+            if (step && !seen.has(step.to)) {
+              seen.add(step.to);
+              queue.push(step.to);
+            }
+          }
+        }
+        components.push(component);
+      }
+      return components;
     }
 
-    function getArrowById(id, arrows = state.arrows) {
+    function pruneInvalidCells() {
+      for (const cellId of [...state.blockedCells]) {
+        if (!state.surface.cells.has(cellId)) state.blockedCells.delete(cellId);
+      }
+      state.arrows = state.arrows.filter((arrow) => arrow.path.every((cellId) => state.surface.cells.has(cellId)));
+      syncGrid();
+      if (state.selectedCellId && !state.surface.cells.has(state.selectedCellId)) state.selectedCellId = null;
+    }
+
+    function syncGrid(arrows = state.arrows) {
+      state.gridMap = new Map();
+      for (const arrow of arrows) {
+        for (const cellId of arrow.path) state.gridMap.set(cellId, arrow.id);
+      }
+    }
+
+    function getBlock(id) {
+      return state.blocks.find((block) => block.id === id) || null;
+    }
+
+    function getArrow(id, arrows = state.arrows) {
       return arrows.find((arrow) => arrow.id === id) || null;
     }
 
     function nextArrowId() {
-      if (!state.arrows.length) return 0;
-      return Math.max(...state.arrows.map((arrow) => arrow.id)) + 1;
+      return state.arrows.length ? Math.max(...state.arrows.map((arrow) => arrow.id)) + 1 : 0;
     }
 
-    function sampleWeighted(input, fallbackText) {
-      const parsed = parseWeights(input, fallbackText);
+    function parseWeights(input, fallback) {
+      const source = input || fallback;
+      const parsed = source.split(",")
+        .map((part) => part.trim())
+        .filter(Boolean)
+        .map((part) => {
+          const [valueRaw, weightRaw] = part.split(":");
+          return { value: Number(valueRaw), weight: Number(weightRaw) };
+        })
+        .filter((item) => Number.isFinite(item.value) && Number.isFinite(item.weight) && item.weight > 0);
+      return parsed.length ? parsed : parseWeights(fallback, "1:1");
+    }
+
+    function sampleWeighted(input, fallback) {
+      const parsed = parseWeights(input, fallback);
       const total = parsed.reduce((sum, item) => sum + item.weight, 0);
       let roll = Math.random() * total;
       for (const item of parsed) {
@@ -1351,200 +1475,503 @@
       return parsed[parsed.length - 1].value;
     }
 
-    function parseWeights(input, fallbackText) {
-      const source = input || fallbackText;
-      const parsed = source.split(",")
-        .map((part) => part.trim())
-        .filter(Boolean)
-        .map((part) => {
-          const [valueRaw, weightRaw] = part.split(":");
-          const value = Number(valueRaw);
-          const weight = Number(weightRaw);
-          return { value, weight };
-        })
-        .filter((item) => Number.isFinite(item.value) && Number.isFinite(item.weight) && item.weight > 0);
-      if (!parsed.length) return parseWeights(fallbackText, "1:1");
-      return parsed;
-    }
-
-    function pathFaceCrossings(path) {
-      let count = 0;
-      for (let i = 1; i < path.length; i += 1) {
-        if (path[i - 1].face !== path[i].face) count += 1;
-      }
-      return count;
-    }
-
-    function pathBends(path) {
-      let bends = 0;
-      let lastDir = null;
-      for (let i = 1; i < path.length; i += 1) {
-        const step = getDirectionBetween(path[i - 1], path[i]);
-        if (step && lastDir && step !== lastDir) bends += 1;
-        if (step) lastDir = step;
-      }
-      return bends;
-    }
-
-    function getDirectionBetween(from, to, dims = state.faceDims) {
+    function findDirectionBetweenCells(fromId, toId, graph = state.surface.graph) {
       for (const dir of Object.keys(DIRS)) {
-        if (sameCell(getSurfaceStep(from, dir, dims).cell, to)) return dir;
+        const step = graph.get(directedKey(fromId, dir));
+        if (step?.to === toId) return dir;
       }
       return null;
     }
 
-    function inferHeadDirectionFromPath(path, dims = state.faceDims) {
+    function inferHeadDirectionFromPath(path, graph = state.surface.graph) {
       if (path.length < 2) return null;
-      const firstDir = getDirectionBetween(path[0], path[1], dims);
+      const firstDir = findDirectionBetweenCells(path[0], path[1], graph);
       if (!firstDir) return null;
       if (path.length >= 3) {
-        const secondDir = getDirectionBetween(path[1], path[2], dims);
+        const secondDir = findDirectionBetweenCells(path[1], path[2], graph);
         if (secondDir !== firstDir) return null;
       }
       return firstDir;
     }
 
-    function validateHeadDirection(path, dir, dims = state.faceDims) {
-      if (path.length < 2) return true;
-      const inferred = inferHeadDirectionFromPath(path, dims);
-      if (!inferred) {
-        throw new Error("头部后两节身体必须沿同一方向延展");
+    function getPlanarRay(cellId, dir, graph = state.surface.graph, cells = state.surface.cells) {
+      const ray = [];
+      let currentId = cellId;
+      let currentDir = dir;
+      const start = cells.get(cellId);
+      if (!start) return ray;
+      const startPlane = planeKey(start);
+      const seen = new Set([cellId]);
+      for (let guard = 0; guard < cells.size + 8; guard += 1) {
+        const step = graph.get(directedKey(currentId, currentDir));
+        if (!step) break;
+        const next = cells.get(step.to);
+        if (!next || planeKey(next) !== startPlane) break;
+        if (seen.has(next.id)) break;
+        ray.push(next.id);
+        seen.add(next.id);
+        currentId = next.id;
+        currentDir = step.toDir;
       }
-      const expected = OPPOSITE_DIR[inferred];
-      if (dir !== expected) {
-        throw new Error(`箭头方向必须背向头部身体延展方向：应为 ${expected}，当前为 ${dir}`);
-      }
-      return true;
+      return ray;
     }
 
-    function validatePathGeometry(path, options = {}) {
+    function getSurfaceForwardRay(cellId, dir, graph = state.surface.graph, cells = state.surface.cells) {
+      const ray = [];
+      let currentId = cellId;
+      let currentDir = dir;
+      const seen = new Set([cellId]);
+      for (let guard = 0; guard < cells.size + 8; guard += 1) {
+        const step = graph.get(directedKey(currentId, currentDir));
+        if (!step) break;
+        if (seen.has(step.to)) break;
+        ray.push(step.to);
+        seen.add(step.to);
+        currentId = step.to;
+        currentDir = step.toDir;
+      }
+      return ray;
+    }
+
+    function validateArrowPath(path, dir, options = {}) {
       const {
-        ignoreArrowId = null,
-        dir = null,
         arrows = state.arrows,
+        ignoreArrowId = null,
         blockedCells = state.blockedCells,
-        dims = state.faceDims
+        graph = state.surface.graph,
+        cells = state.surface.cells
       } = options;
-      if (!Array.isArray(path) || path.length === 0) throw new Error("路径不能为空");
-
+      if (!Array.isArray(path) || !path.length) throw new Error("路径不能为空");
       const local = new Set();
-      const existingGrid = rebuildGrid(arrows.filter((arrow) => arrow.id !== ignoreArrowId));
-      for (let i = 0; i < path.length; i += 1) {
-        const cell = path[i];
-        if (!isInBounds(cell, dims)) throw new Error(`路径越界：${pathToken(cell)}`);
-        const key = cellKey(cell);
-        if (blockedCells.has(key)) throw new Error(`路径进入禁区：${pathToken(cell)}`);
-        if (local.has(key)) throw new Error(`同一箭头重复占格：${pathToken(cell)}`);
-        if (existingGrid.has(key)) throw new Error(`路径与其他箭头重叠：${pathToken(cell)}`);
-        if (i > 0 && !areSurfaceNeighbors(path[i - 1], cell, dims)) {
-          throw new Error(`路径不连续：${pathToken(path[i - 1])} -> ${pathToken(cell)}`);
-        }
-        local.add(key);
+      const occupied = new Map();
+      for (const arrow of arrows) {
+        if (arrow.id === ignoreArrowId) continue;
+        for (const cellId of arrow.path) occupied.set(cellId, arrow.id);
       }
-
-      if (dir) {
-        validateHeadDirection(path, dir, dims);
-        const ray = getLocalRayOnFace(path[0], dir, dims);
-        for (const rayCell of ray) {
-          if (local.has(cellKey(rayCell))) {
-            throw new Error(`头部射线穿过自身身体：${pathToken(rayCell)}`);
-          }
+      for (let i = 0; i < path.length; i += 1) {
+        const cellId = path[i];
+        if (!cells.has(cellId)) throw new Error(`路径不在外表面：${cellId}`);
+        if (blockedCells.has(cellId)) throw new Error(`路径进入禁区：${cellId}`);
+        if (local.has(cellId)) throw new Error(`同一箭头重复占格：${cellId}`);
+        if (occupied.has(cellId)) throw new Error(`路径与其他箭头重叠：${cellId}`);
+        if (i > 0 && !findDirectionBetweenCells(path[i - 1], cellId, graph)) {
+          throw new Error(`路径不连续：${path[i - 1]} -> ${cellId}`);
         }
-        const surfaceRay = getSurfaceForwardRay(path[0], dir, dims);
-        for (const rayCell of surfaceRay) {
-          if (rayCell.face !== path[0].face && local.has(cellKey(rayCell))) {
-            throw new Error(`头部朝向不能正对自己的跨面身体：${pathToken(rayCell)}`);
+        local.add(cellId);
+      }
+      if (dir) {
+        const inferred = inferHeadDirectionFromPath(path, graph);
+        if (path.length >= 2 && !inferred) throw new Error("头部后两节身体必须沿同一方向延展");
+        const expected = inferred ? OPPOSITE_DIR[inferred] : dir;
+        if (dir !== expected) throw new Error(`箭头方向必须背向头部身体延展方向：应为 ${expected}，当前为 ${dir}`);
+        for (const cellId of getPlanarRay(path[0], dir, graph, cells)) {
+          if (local.has(cellId)) throw new Error(`头部射线穿过自身身体：${cellId}`);
+        }
+        const headPlane = planeKey(cells.get(path[0]));
+        for (const cellId of getSurfaceForwardRay(path[0], dir, graph, cells)) {
+          const cell = cells.get(cellId);
+          if (cell && planeKey(cell) !== headPlane && local.has(cellId)) {
+            throw new Error(`头部朝向不能正对自己的跨面身体：${cellId}`);
           }
         }
       }
       return true;
     }
 
-    function makeArrow(path, dir, color = null, id = null, dims = state.faceDims) {
-      const arrow = {
+    function makeArrow(path, dir, color = null, id = null) {
+      return {
         id: id ?? nextArrowId(),
         dir,
-        path: path.map((cell) => ({ ...cell })),
-        ray: getLocalRayOnFace(path[0], dir, dims),
+        path: [...path],
         color: color || PALETTE[(id ?? nextArrowId()) % PALETTE.length]
       };
-      return arrow;
     }
 
-    function validateAndStore(path, dir, color = null) {
-      validatePathGeometry(path, { dir });
-      const arrow = makeArrow(path, dir, color);
-      const candidate = [...state.arrows, arrow];
-      const solve = quickSolveCheck(candidate);
-      if (!solve.solvable) throw new Error("放置后关卡不可解");
-      state.arrows.push(arrow);
-      syncGrid();
-      state.selectedArrowId = arrow.id;
-      state.lastSolve = solve;
-      renderAll();
-      return arrow;
-    }
-
-    function canRemoveArrow(arrow, arrows = state.arrows, grid = rebuildGrid(arrows)) {
-      for (const cell of getLocalRayOnFace(arrow.path[0], arrow.dir)) {
-        if (grid.has(cellKey(cell))) return false;
+    function canRemoveArrow(arrow, arrows = state.arrows) {
+      const grid = new Map();
+      for (const item of arrows) {
+        for (const cellId of item.path) grid.set(cellId, item.id);
+      }
+      for (const cellId of getPlanarRay(arrow.path[0], arrow.dir)) {
+        const id = grid.get(cellId);
+        if (id !== undefined && id !== arrow.id) return false;
       }
       return true;
     }
 
     function quickSolveCheck(arrows = state.arrows) {
-      let remaining = arrows.map((arrow) => ({
-        ...arrow,
-        path: arrow.path.map((cell) => ({ ...cell }))
-      }));
+      let remaining = arrows.map((arrow) => ({ ...arrow, path: [...arrow.path] }));
       const order = [];
       let guard = 0;
       while (remaining.length && guard < 2000) {
         guard += 1;
-        const grid = rebuildGrid(remaining);
-        const removable = remaining.filter((arrow) => canRemoveArrow(arrow, remaining, grid));
+        const removable = remaining.filter((arrow) => canRemoveArrow(arrow, remaining));
         if (!removable.length) {
-          return {
-            solvable: false,
-            removed: order,
-            stuck: remaining.map((arrow) => arrow.id),
-            removable: []
-          };
+          return { solvable: false, removed: order, stuck: remaining.map((arrow) => arrow.id) };
         }
         for (const arrow of removable) order.push(arrow.id);
-        const removeIds = new Set(removable.map((arrow) => arrow.id));
-        remaining = remaining.filter((arrow) => !removeIds.has(arrow.id));
+        const ids = new Set(removable.map((arrow) => arrow.id));
+        remaining = remaining.filter((arrow) => !ids.has(arrow.id));
       }
-      return {
-        solvable: remaining.length === 0,
-        removed: order,
-        stuck: remaining.map((arrow) => arrow.id),
-        removable: []
-      };
+      return { solvable: remaining.length === 0, removed: order, stuck: remaining.map((arrow) => arrow.id) };
     }
 
     function currentlyRemovableIds() {
-      const grid = rebuildGrid(state.arrows);
-      return new Set(state.arrows.filter((arrow) => canRemoveArrow(arrow, state.arrows, grid)).map((arrow) => arrow.id));
+      return new Set(state.arrows.filter((arrow) => canRemoveArrow(arrow)).map((arrow) => arrow.id));
     }
 
-    function getRayBlockers(arrow) {
-      const blockers = [];
-      for (const cell of getLocalRayOnFace(arrow.path[0], arrow.dir)) {
-        const id = state.gridMap.get(cellKey(cell));
-        if (id !== undefined) blockers.push({ id, cell });
+    function generateRandomPath(startId, length, targetBends, crossRate) {
+      if (length <= 1) return [startId];
+      for (let attempt = 0; attempt < 120; attempt += 1) {
+        const path = [startId];
+        const pathSet = new Set(path);
+        let currentDir = null;
+        let bends = 0;
+        while (path.length < length) {
+          const currentId = path[path.length - 1];
+          let options = Object.keys(DIRS)
+            .map((dir) => ({ dir, step: state.surface.graph.get(directedKey(currentId, dir)) }))
+            .filter((item) => item.step && !pathSet.has(item.step.to) && !state.gridMap.has(item.step.to) && !state.blockedCells.has(item.step.to))
+            .map((item) => ({
+              dir: item.dir,
+              step: item.step,
+              nextBends: currentDir && item.dir !== currentDir ? bends + 1 : bends,
+              crossed: item.step.relation === "edge_fold"
+            }))
+            .filter((item) => item.nextBends <= targetBends);
+          if (!options.length) break;
+          const crossing = options.filter((item) => item.crossed);
+          const planar = options.filter((item) => !item.crossed);
+          if (crossing.length && Math.random() < crossRate) options = crossing;
+          else if (planar.length) options = planar;
+          const weighted = options.flatMap((item) => {
+            const continuing = currentDir && item.dir === currentDir;
+            const weight = item.crossed ? 4 : continuing ? 3 : 1;
+            return Array.from({ length: weight }, () => item);
+          });
+          const pick = weighted[randomInt(weighted.length)];
+          path.push(pick.step.to);
+          pathSet.add(pick.step.to);
+          currentDir = pick.dir;
+          bends = pick.nextBends;
+        }
+        if (path.length === length) return path;
       }
-      return blockers;
+      return null;
+    }
+
+    function addRandomArrow() {
+      const starts = shuffle([...state.surface.cells.keys()].filter((id) => !state.gridMap.has(id) && !state.blockedCells.has(id)));
+      const crossRate = clamp(Number(els.inputCrossRate.value) || 0, 0, 1);
+      for (const startId of starts.slice(0, 160)) {
+        for (let attempt = 0; attempt < 16; attempt += 1) {
+          const length = Math.max(2, sampleWeighted(els.inputLengthWeights.value, "2:20,3:30,4:24,5:14,6:8"));
+          const bends = sampleWeighted(els.inputBendWeights.value, "0:32,1:38,2:24,3:6");
+          const path = generateRandomPath(startId, length, bends, crossRate);
+          if (!path) continue;
+          const inferred = inferHeadDirectionFromPath(path);
+          if (!inferred) continue;
+          const dir = OPPOSITE_DIR[inferred];
+          try {
+            validateArrowPath(path, dir);
+            const arrow = makeArrow(path, dir);
+            const candidate = [...state.arrows, arrow];
+            const solve = quickSolveCheck(candidate);
+            if (!solve.solvable) continue;
+            state.arrows.push(arrow);
+            syncGrid();
+            state.selectedArrowId = arrow.id;
+            state.lastSolve = solve;
+            return true;
+          } catch {
+            // Try another candidate.
+          }
+        }
+      }
+      return false;
+    }
+
+    function fillGeneratedArrows() {
+      if (!state.surface.canGenerate) {
+        setStatus("地图结构存在问题，不能生成箭头");
+        renderAll();
+        return;
+      }
+      state.arrows = [];
+      state.selectedArrowId = null;
+      syncGrid();
+      const target = Math.floor([...state.surface.cells.keys()].filter((id) => !state.blockedCells.has(id)).length * clamp(Number(els.inputFillRate.value) || 0.34, 0.05, 0.88));
+      let attempts = 0;
+      let placed = 0;
+      while (state.gridMap.size < target && attempts < 1400) {
+        attempts += 1;
+        if (addRandomArrow()) placed += 1;
+      }
+      state.lastSolve = quickSolveCheck();
+      setStatus(`生成完成：${placed} 支箭头，占用 ${state.gridMap.size}/${state.surface.cells.size} 格`);
+      renderAll();
+    }
+
+    function selectBlock(id) {
+      state.selectedBlockId = id;
+      syncBlockForm();
+      setStatus(`已选中 Block ${id}`);
+      renderAll();
+    }
+
+    function selectCell(cellId) {
+      state.selectedCellId = cellId;
+      const cell = state.surface.cells.get(cellId);
+      if (cell) state.selectedBlockId = cell.blockId;
+      syncBlockForm();
+      setStatus(`已选中表面格 ${cellId}`);
+      renderAll();
+    }
+
+    function syncBlockForm() {
+      const block = getBlock(state.selectedBlockId);
+      const disabled = !block;
+      for (const input of [els.inputSizeW, els.inputSizeH, els.inputSizeD, els.inputPosX, els.inputPosY, els.inputPosZ, els.inputRotX, els.inputRotY, els.inputRotZ]) {
+        input.disabled = disabled;
+      }
+      if (!block) {
+        els.selectedBlockNote.textContent = "未选中 Block";
+        return;
+      }
+      [els.inputSizeW.value, els.inputSizeH.value, els.inputSizeD.value] = block.size;
+      [els.inputPosX.value, els.inputPosY.value, els.inputPosZ.value] = block.position.map((value) => Number(value.toFixed(2)));
+      [els.inputRotX.value, els.inputRotY.value, els.inputRotZ.value] = block.rotationDeg.map((value) => Number(value.toFixed(1)));
+      const targetCell = state.surface.cells.get(state.selectedCellId);
+      const targetText = targetCell ? ` · 目标 ${targetCell.id}` : "";
+      els.selectedBlockNote.textContent = `${block.id} · ${block.size.join("×")} · pos ${block.position.map((v) => Number(v.toFixed(1))).join(",")}${targetText}`;
+    }
+
+    function selectedSizeFromForm(fallback = [4, 4, 4]) {
+      return [
+        clamp(Math.round(Number(els.inputSizeW.value) || fallback[0] || 1), 1, 24),
+        clamp(Math.round(Number(els.inputSizeH.value) || fallback[1] || 1), 1, 24),
+        clamp(Math.round(Number(els.inputSizeD.value) || fallback[2] || 1), 1, 24)
+      ];
+    }
+
+    function applyBlockForm() {
+      const block = getBlock(state.selectedBlockId);
+      if (!block) return setStatus("未选中 Block");
+      const snap = Number(els.inputSnap.value) || 15;
+      block.size = selectedSizeFromForm(block.size);
+      block.position = [Number(els.inputPosX.value) || 0, Number(els.inputPosY.value) || 0, Number(els.inputPosZ.value) || 0];
+      block.rotationDeg = [
+        roundTo(Number(els.inputRotX.value) || 0, snap),
+        roundTo(Number(els.inputRotY.value) || 0, snap),
+        roundTo(Number(els.inputRotZ.value) || 0, snap)
+      ];
+      rebuildAfterStructureChange(`已应用 Block ${block.id}`);
+    }
+
+    function addBlock(block = null) {
+      const id = nextBlockId();
+      const created = normalizeBlock(block || {
+        Id: id,
+        Size: [4, 4, 4],
+        Position: [state.blocks.length * 5, 0, 0],
+        RotationDeg: [0, 0, 0],
+        Color: BLOCK_COLORS[state.blocks.length % BLOCK_COLORS.length]
+      }, id);
+      state.blocks.push(created);
+      state.selectedBlockId = created.id;
+      rebuildAfterStructureChange(`已添加 Block ${created.id}`);
+    }
+
+    function duplicateSelectedBlock() {
+      const block = getBlock(state.selectedBlockId);
+      if (!block) return setStatus("未选中 Block");
+      addBlock({
+        ...blockToJson(block),
+        Id: nextBlockId(),
+        Position: [block.position[0] + 1.5, block.position[1] + 1.5, block.position[2] + 1.5],
+        Color: BLOCK_COLORS[state.blocks.length % BLOCK_COLORS.length]
+      });
+    }
+
+    function deleteSelectedBlock() {
+      if (!state.selectedBlockId) return setStatus("未选中 Block");
+      state.blocks = state.blocks.filter((block) => block.id !== state.selectedBlockId);
+      state.selectedBlockId = state.blocks[0]?.id || null;
+      rebuildAfterStructureChange("Block 已删除");
+    }
+
+    function matrixToEulerDeg(xAxis, yAxis, zAxis) {
+      const matrix = new THREE.Matrix4();
+      matrix.makeBasis(xAxis, yAxis, zAxis);
+      const euler = new THREE.Euler().setFromRotationMatrix(matrix, "XYZ");
+      return [
+        THREE.MathUtils.radToDeg(euler.x),
+        THREE.MathUtils.radToDeg(euler.y),
+        THREE.MathUtils.radToDeg(euler.z)
+      ].map((value) => roundTo(value, Number(els.inputSnap.value) || 15));
+    }
+
+    function centralInnerFaceAnchor(size) {
+      const [width, height, depth] = size;
+      const c = Math.floor(width / 2);
+      const r = Math.floor(height / 2);
+      return vec(c + 0.5 - width / 2, -(r + 0.5 - height / 2), -depth / 2);
+    }
+
+    function placementOnCell(cell, size) {
+      const zAxis = cell.normal.clone().normalize();
+      const xAxis = cell.tangentU.clone().normalize();
+      const yAxis = cell.tangentV.clone().multiplyScalar(-1).normalize();
+      const rotationDeg = matrixToEulerDeg(xAxis, yAxis, zAxis);
+      const quat = blockQuaternion({ rotationDeg, rotationOrder: "XYZ" });
+      const anchor = centralInnerFaceAnchor(size).applyQuaternion(quat);
+      const position = cell.center.clone().sub(anchor);
+      return {
+        position: [position.x, position.y, position.z],
+        rotationDeg
+      };
+    }
+
+    function attachBlockToSelectedCell() {
+      const cell = state.surface.cells.get(state.selectedCellId);
+      if (!cell) return setStatus("先在 3D 或表面图集中选中一个外表面格");
+      const id = nextBlockId();
+      const size = selectedSizeFromForm([4, 4, 4]);
+      const placement = placementOnCell(cell, size);
+      addBlock({
+        Id: id,
+        Size: size,
+        Position: placement.position,
+        RotationDeg: placement.rotationDeg,
+        Color: BLOCK_COLORS[state.blocks.length % BLOCK_COLORS.length]
+      });
+    }
+
+    function moveSelectedBlockToCell() {
+      const block = getBlock(state.selectedBlockId);
+      const cell = state.surface.cells.get(state.selectedCellId);
+      if (!block) return setStatus("未选中要移动的 Block");
+      if (!cell) return setStatus("先选中一个目标表面格");
+      if (block.id === cell.blockId) return setStatus("目标格在当前 Block 上，请先选目标格，再从列表选另一个 Block");
+      const placement = placementOnCell(cell, block.size);
+      block.position = placement.position;
+      block.rotationDeg = placement.rotationDeg;
+      block.rotationOrder = "XYZ";
+      rebuildAfterStructureChange(`已将 Block ${block.id} 移动到 ${cell.id}`);
+    }
+
+    function nudgeSelectedBlock(axisIndex, sign) {
+      const block = getBlock(state.selectedBlockId);
+      if (!block) return setStatus("未选中 Block");
+      const step = Number(els.inputMoveStep.value) || 1;
+      block.position[axisIndex] = Number((block.position[axisIndex] + sign * step).toFixed(3));
+      rebuildAfterStructureChange(`Block ${block.id} 已移动 ${["X", "Y", "Z"][axisIndex]} ${sign > 0 ? "+" : "-"}${step}`);
+    }
+
+    function rotateSelectedBlock(axisIndex, sign) {
+      const block = getBlock(state.selectedBlockId);
+      if (!block) return setStatus("未选中 Block");
+      const snap = Number(els.inputSnap.value) || 15;
+      block.rotationDeg[axisIndex] = roundTo(block.rotationDeg[axisIndex] + sign * snap, snap);
+      rebuildAfterStructureChange(`Block ${block.id} 已旋转 ${["X", "Y", "Z"][axisIndex]} ${sign > 0 ? "+" : "-"}${snap}°`);
+    }
+
+    function rebuildAfterStructureChange(message = "结构已重建") {
+      state.arrows = [];
+      state.drawPath = [];
+      state.selectedArrowId = null;
+      state.lastSolve = null;
+      buildSurface();
+      syncBlockForm();
+      setStatus(message);
+      renderAll();
+      exportLevel();
+    }
+
+    function handleCellAction(cellId) {
+      if (state.mode === "structure") {
+        selectCell(cellId);
+        return;
+      }
+      if (state.mode === "block") {
+        if (state.gridMap.has(cellId)) return setStatus("已有箭头的格子不能设为禁区");
+        if (state.blockedCells.has(cellId)) state.blockedCells.delete(cellId);
+        else state.blockedCells.add(cellId);
+        state.lastSolve = null;
+        renderAll();
+        return;
+      }
+      if (state.mode === "draw") {
+        addDrawCell(cellId);
+        return;
+      }
+      const arrowId = state.gridMap.get(cellId);
+      if (arrowId !== undefined) {
+        removeArrowById(arrowId);
+      } else {
+        selectCell(cellId);
+      }
+    }
+
+    function addDrawCell(cellId) {
+      if (!state.surface.canGenerate) return setStatus("地图结构存在问题，不能绘制箭头");
+      if (state.gridMap.has(cellId) || state.blockedCells.has(cellId)) return setStatus("绘制路径不能穿过占用格或禁区");
+      if (state.drawPath.length) {
+        const last = state.drawPath[state.drawPath.length - 1];
+        if (last === cellId) return;
+        if (state.drawPath.length > 1 && state.drawPath[state.drawPath.length - 2] === cellId) {
+          state.drawPath.pop();
+          renderAll();
+          return;
+        }
+        if (!findDirectionBetweenCells(last, cellId)) return setStatus(`路径不连续：${last} -> ${cellId}`);
+        if (state.drawPath.includes(cellId)) return setStatus("同一条路径不能重复占格");
+      }
+      state.drawPath.push(cellId);
+      state.selectedCellId = cellId;
+      setStatus(`绘制路径长度：${state.drawPath.length}`);
+      renderAll();
+    }
+
+    function finishDrawPath() {
+      if (!state.drawPath.length) return setStatus("没有正在绘制的路径");
+      try {
+        const inferred = inferHeadDirectionFromPath(state.drawPath);
+        const dir = inferred ? OPPOSITE_DIR[inferred] : els.drawDirection.value;
+        validateArrowPath(state.drawPath, dir);
+        const arrow = makeArrow(state.drawPath, dir);
+        const candidate = [...state.arrows, arrow];
+        const solve = quickSolveCheck(candidate);
+        if (!solve.solvable) throw new Error("放置后关卡不可解");
+        state.arrows.push(arrow);
+        state.selectedArrowId = arrow.id;
+        state.drawPath = [];
+        syncGrid();
+        state.lastSolve = solve;
+        setStatus(`手动绘制完成：#${arrow.id} ${dir}`);
+        renderAll();
+      } catch (error) {
+        setStatus(error.message);
+      }
+    }
+
+    function undoDrawPath() {
+      state.drawPath.pop();
+      setStatus(`绘制路径长度：${state.drawPath.length}`);
+      renderAll();
     }
 
     function removeArrowById(id, force = false) {
-      const arrow = getArrowById(id);
+      const arrow = getArrow(id);
       if (!arrow) return false;
       if (!force && !canRemoveArrow(arrow)) {
-        selectArrow(id);
-        const blockers = getRayBlockers(arrow);
-        const blockerText = blockers.map((item) => `#${item.id}@${pathToken(item.cell)}`).join("、");
-        setStatus(`箭头 #${id} 被阻挡：${blockerText || "未知"}`);
+        state.selectedArrowId = id;
+        const blockers = getPlanarRay(arrow.path[0], arrow.dir).filter((cellId) => {
+          const blockerId = state.gridMap.get(cellId);
+          return blockerId !== undefined && blockerId !== id;
+        });
+        setStatus(`箭头 #${id} 被阻挡：${blockers.join("、") || "未知"}`);
+        renderAll();
         return false;
       }
       state.arrows = state.arrows.filter((item) => item.id !== id);
@@ -1559,185 +1986,134 @@
     function removeOneBatch() {
       const removable = [...currentlyRemovableIds()];
       if (!removable.length) {
-        setStatus("当前没有可移除箭头");
         state.lastSolve = quickSolveCheck();
+        setStatus("当前没有可移除箭头");
         renderAll();
         return;
       }
       state.arrows = state.arrows.filter((arrow) => !removable.includes(arrow.id));
-      if (state.selectedArrowId !== null && removable.includes(state.selectedArrowId)) {
-        state.selectedArrowId = null;
-      }
+      if (state.selectedArrowId !== null && removable.includes(state.selectedArrowId)) state.selectedArrowId = null;
       syncGrid();
       state.lastSolve = quickSolveCheck();
       setStatus(`已移除 ${removable.length} 支可移动箭头`);
       renderAll();
     }
 
-    function selectArrow(id) {
-      state.selectedArrowId = id;
-      renderAll();
-    }
-
-    function getEmptyCells() {
-      return allCells().filter((cell) => {
-        const key = cellKey(cell);
-        return !state.gridMap.has(key) && !state.blockedCells.has(key);
-      });
-    }
-
-    function isCellFreeForPath(cell, pathKeys) {
-      const key = cellKey(cell);
-      return isInBounds(cell) &&
-        !state.gridMap.has(key) &&
-        !state.blockedCells.has(key) &&
-        !pathKeys.has(key);
-    }
-
-    function generateRandomPath(start, length, targetBends, maxCrossings, crossRate) {
-      if (length <= 1) return [start];
-      for (let attempt = 0; attempt < 140; attempt += 1) {
-        const path = [{ ...start }];
-        const pathKeys = new Set([cellKey(start)]);
-        let currentDir = null;
-        let bends = 0;
-        let crossings = 0;
-
-        while (path.length < length) {
-          const current = path[path.length - 1];
-          let options = getSurfaceNeighbors(current)
-            .filter((step) => isCellFreeForPath(step.cell, pathKeys))
-            .map((step) => {
-              const nextBends = currentDir && step.dir !== currentDir ? bends + 1 : bends;
-              const nextCrossings = crossings + (step.crossed ? 1 : 0);
-              return { ...step, nextBends, nextCrossings };
-            })
-            .filter((step) => step.nextBends <= targetBends && step.nextCrossings <= maxCrossings);
-
-          if (!options.length) break;
-
-          const crossingOptions = options.filter((step) => step.crossed);
-          const sameFaceOptions = options.filter((step) => !step.crossed);
-          if (crossingOptions.length && Math.random() < crossRate) {
-            options = crossingOptions;
-          } else if (sameFaceOptions.length) {
-            options = sameFaceOptions;
-          }
-
-          const weighted = options.flatMap((step) => {
-            const continuing = currentDir && step.dir === currentDir;
-            const wantsBend = bends < targetBends && currentDir && step.dir !== currentDir;
-            const weight = step.crossed ? 4 : wantsBend ? 3 : continuing ? 2 : 1;
-            return Array.from({ length: weight }, () => step);
-          });
-          const pick = weighted[randomInt(weighted.length)];
-          path.push(pick.cell);
-          pathKeys.add(cellKey(pick.cell));
-          bends = pick.nextBends;
-          crossings = pick.nextCrossings;
-          currentDir = pick.dir;
-        }
-
-        if (path.length === length && pathBends(path) <= targetBends && pathFaceCrossings(path) <= maxCrossings) {
-          return path;
-        }
-      }
-      return null;
-    }
-
-    function addRandomArrow(allowLengthOne = false) {
-      const lengthFallback = allowLengthOne ? "1:24,2:24,3:20,4:14,5:8" : "2:20,3:30,4:24,5:12,6:6";
-      const bendFallback = "0:40,1:35,2:20,3:5";
-      const maxCrossings = clamp(Number(els.inputMaxCrossings.value) || 0, 0, 8);
-      const crossRate = clamp(Number(els.inputCrossRate.value) || 0, 0, 1);
-      const starts = shuffle(getEmptyCells()).sort((a, b) => edgeScore(a) - edgeScore(b));
-
-      for (const start of starts.slice(0, 80)) {
-        for (let attempt = 0; attempt < 24; attempt += 1) {
-          const length = Math.max(allowLengthOne ? 1 : 2, sampleWeighted(els.inputLengthWeights.value, lengthFallback));
-          const bends = sampleWeighted(els.inputBendWeights.value, bendFallback);
-          const path = generateRandomPath(start, length, bends, maxCrossings, crossRate);
-          if (!path) continue;
-          const inferredDir = inferHeadDirectionFromPath(path);
-          if (path.length >= 2 && !inferredDir) continue;
-          const dirs = inferredDir ? [OPPOSITE_DIR[inferredDir]] : shuffle(Object.keys(DIRS));
-          for (const dir of dirs) {
-            try {
-              const arrow = validateAndStore(path, dir);
-              setStatus(`已添加箭头 #${arrow.id}`);
-              return true;
-            } catch (error) {
-              // Continue trying candidates.
-            }
-          }
-        }
-      }
-      return false;
-    }
-
-    function edgeScore(cell) {
-      const rows = faceRows(cell.face);
-      const cols = faceCols(cell.face);
-      return Math.min(cell.r, cell.c, rows - 1 - cell.r, cols - 1 - cell.c);
-    }
-
-    function fillFullCubeMap() {
+    function clearArrows() {
       state.arrows = [];
-      state.selectedArrowId = null;
-      syncGrid();
-      const fillRate = clamp(Number(els.inputFillRate.value) || 0.52, 0.1, 0.9);
-      const totalAvailable = allCells().filter((cell) => !state.blockedCells.has(cellKey(cell))).length;
-      const target = Math.floor(totalAvailable * fillRate);
-      let attempts = 0;
-      let placed = 0;
-
-      while (state.gridMap.size < target && attempts < 1200) {
-        attempts += 1;
-        if (addRandomArrow(false)) placed += 1;
-      }
-
-      while (state.gridMap.size < target && attempts < 1700) {
-        attempts += 1;
-        if (addRandomArrow(true)) placed += 1;
-      }
-
-      state.lastSolve = quickSolveCheck();
-      setStatus(`生成完成：${placed} 支箭头，占用 ${state.gridMap.size}/${totalAvailable} 格`);
-      renderAll();
-    }
-
-    function syncBoxSizeUI() {
-      els.inputBoxWidth.value = state.boxSize.width;
-      els.inputBoxHeight.value = state.boxSize.height;
-      els.inputBoxDepth.value = state.boxSize.depth;
-      els.boxDimsReadout.textContent = boxDerivedFacesSummary();
-    }
-
-    function readBoxSizeFromUI() {
-      return normalizeBoxSize({
-        width: Number(els.inputBoxWidth.value),
-        height: Number(els.inputBoxHeight.value),
-        depth: Number(els.inputBoxDepth.value)
-      });
-    }
-
-    function applyBoxSizeFromUI() {
-      let box;
-      try {
-        box = readBoxSizeFromUI();
-      } catch (error) {
-        setStatus(error.message);
-        return;
-      }
-      setBoxSize(box);
-      state.arrows = [];
-      state.blockedCells.clear();
-      state.selectedArrowId = null;
       state.drawPath = [];
+      state.selectedArrowId = null;
       syncGrid();
       state.lastSolve = null;
-      setStatus(`尺寸已应用：${boxSizeSummary()}`);
+      setStatus("箭头已清空");
       renderAll();
+    }
+
+    function clearBlockedCells() {
+      state.blockedCells.clear();
+      setStatus("禁区已清除");
+      renderAll();
+    }
+
+    function exportLevel() {
+      const payload = {
+        SchemaVersion: 4,
+        BoardType: "compound_blocks",
+        Level: state.level,
+        GridUnit: 1,
+        Snap: {
+          AngleStep: state.snapAngle,
+          AngleOptions: [15, 30, 45, 90],
+          PositionStep: 1
+        },
+        Blocks: state.blocks.map(blockToJson),
+        SurfacePolicy: {
+          CoverageRule: "cell_center_inside_other_block",
+          RemoveFaceContact: true,
+          GenerateCutInteriorFaces: false,
+          RequireConnected: true,
+          RejectAmbiguousEdges: true
+        },
+        EditorConfig: {
+          LengthWeights: els.inputLengthWeights.value,
+          BendWeights: els.inputBendWeights.value,
+          CrossFaceRate: Number(els.inputCrossRate.value),
+          FillRate: Number(els.inputFillRate.value),
+          LineStyle: state.lineStyle
+        },
+        MapValidation: {
+          SurfaceCellCount: state.surface.cells.size,
+          IssueCount: state.surface.issues.length,
+          CanGenerate: state.surface.canGenerate
+        },
+        BlockedCells: [...state.blockedCells].sort(),
+        Arrows: state.arrows.map((arrow) => ({
+          Id: arrow.id,
+          Dir: arrow.dir,
+          Path: [...arrow.path],
+          Color: arrow.color
+        }))
+      };
+      els.jsonBox.value = JSON.stringify(payload, null, 2);
+      els.jsonNote.textContent = `已导出 ${payload.Blocks.length} 个 Block，${payload.Arrows.length} 支箭头`;
+      return payload;
+    }
+
+    function importLevel() {
+      try {
+        const payload = JSON.parse(els.jsonBox.value);
+        if (payload.SchemaVersion !== 4) throw new Error("SchemaVersion 必须是 4");
+        if (payload.BoardType !== "compound_blocks") throw new Error("BoardType 必须是 compound_blocks");
+        if (!Array.isArray(payload.Blocks) || !payload.Blocks.length) throw new Error("Blocks 必须是非空数组");
+        state.snapAngle = Number(payload.Snap?.AngleStep) || 15;
+        els.inputSnap.value = String(state.snapAngle);
+        state.blocks = payload.Blocks.map((raw, index) => normalizeBlock(raw, String.fromCharCode(65 + index)));
+        state.selectedBlockId = state.blocks[0]?.id || null;
+        buildSurface();
+        state.blockedCells = new Set((payload.BlockedCells || []).filter((id) => state.surface.cells.has(id)));
+        const importedArrows = [];
+        for (const raw of payload.Arrows || []) {
+          const path = [...raw.Path];
+          const arrow = makeArrow(path, raw.Dir, raw.Color, raw.Id);
+          validateArrowPath(arrow.path, arrow.dir, { arrows: importedArrows });
+          importedArrows.push(arrow);
+        }
+        state.arrows = importedArrows;
+        state.lineStyle = Boolean(payload.EditorConfig?.LineStyle);
+        els.lineStyle.checked = state.lineStyle;
+        document.body.classList.toggle("line-style", state.lineStyle);
+        syncGrid();
+        state.lastSolve = quickSolveCheck();
+        syncBlockForm();
+        setStatus(`导入完成：${state.blocks.length} 个 Block，${state.arrows.length} 支箭头`);
+        renderAll();
+      } catch (error) {
+        setStatus(`导入失败：${error.message}`);
+      }
+    }
+
+    function downloadJson() {
+      const payload = exportLevel();
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `compound_arrow_level_${String(state.level).padStart(4, "0")}.json`;
+      link.click();
+      URL.revokeObjectURL(url);
+      setStatus("JSON 文件已生成");
+    }
+
+    function loadSample() {
+      state.blocks = [
+        normalizeBlock({ Id: "A", Size: [6, 4, 4], Position: [0, 0, 0], RotationDeg: [0, 0, 0], Color: "#19d8ff" }, "A"),
+        normalizeBlock({ Id: "B", Size: [4, 4, 4], Position: [5, 0, 0], RotationDeg: [0, 0, 0], Color: "#b875ff" }, "B"),
+        normalizeBlock({ Id: "C", Size: [4, 4, 2], Position: [1, 4, 0], RotationDeg: [0, 0, 0], Color: "#a8ef32" }, "C")
+      ];
+      state.selectedBlockId = "A";
+      state.selectedCellId = null;
+      state.blockedCells.clear();
+      rebuildAfterStructureChange("示例组合体已加载");
     }
 
     function setMode(mode) {
@@ -1746,401 +2122,185 @@
       for (const button of document.querySelectorAll(".segmented button")) {
         button.classList.toggle("active", button.dataset.mode === mode);
       }
-      els.modeChip.textContent = mode === "play" ? "试玩" : mode === "draw" ? "绘制" : "禁区";
-      setStatus(`当前模式：${els.modeChip.textContent}`);
+      setStatus(`当前模式：${{ structure: "结构", play: "试玩", draw: "绘制", block: "禁区" }[mode]}`);
       renderAll();
     }
 
-    function handleCellAction(cell) {
-      const key = cellKey(cell);
-      if (state.mode === "block") {
-        if (state.gridMap.has(key)) {
-          setStatus("已有箭头的格子不能设为禁区");
-          return;
-        }
-        if (state.blockedCells.has(key)) state.blockedCells.delete(key);
-        else state.blockedCells.add(key);
-        state.lastSolve = null;
-        renderAll();
-        return;
-      }
-
-      if (state.mode === "draw") {
-        addDrawCell(cell);
-        return;
-      }
-
-      const arrowId = state.gridMap.get(key);
-      if (arrowId !== undefined) {
-        if (!removeArrowById(arrowId)) selectArrow(arrowId);
-      } else {
-        state.selectedArrowId = null;
-        renderAll();
-      }
-    }
-
-    function addDrawCell(cell) {
-      const key = cellKey(cell);
-      if (state.gridMap.has(key) || state.blockedCells.has(key)) {
-        setStatus("绘制路径不能穿过占用格或禁区");
-        return;
-      }
-      if (state.drawPath.length) {
-        const last = state.drawPath[state.drawPath.length - 1];
-        if (sameCell(last, cell)) return;
-        if (state.drawPath.length > 1 && sameCell(state.drawPath[state.drawPath.length - 2], cell)) {
-          state.drawPath.pop();
-          renderAll();
-          return;
-        }
-        if (!areSurfaceNeighbors(last, cell)) {
-          setStatus(`路径不连续：${pathToken(last)} -> ${pathToken(cell)}`);
-          return;
-        }
-        if (state.drawPath.some((item) => sameCell(item, cell))) {
-          setStatus("同一条路径不能重复占格");
-          return;
-        }
-      }
-      state.drawPath.push({ ...cell });
-      setStatus(`绘制路径长度：${state.drawPath.length}`);
+    function runValidate() {
+      buildSurface();
+      state.lastSolve = quickSolveCheck();
+      const status = state.surface.canGenerate ? "地图可生成" : `地图存在 ${state.surface.issues.length} 个结构问题`;
+      setStatus(status);
       renderAll();
-    }
-
-    function finishDrawPath() {
-      if (!state.drawPath.length) {
-        setStatus("没有正在绘制的路径");
-        return;
-      }
-      try {
-        const inferredDir = inferHeadDirectionFromPath(state.drawPath);
-        const dir = inferredDir ? OPPOSITE_DIR[inferredDir] : els.drawDirection.value;
-        if (inferredDir) els.drawDirection.value = dir;
-        const arrow = validateAndStore(state.drawPath, dir);
-        state.drawPath = [];
-        setStatus(`手动绘制完成：#${arrow.id} ${dir}`);
-      } catch (error) {
-        setStatus(error.message);
-      }
-    }
-
-    function undoDrawPath() {
-      if (!state.drawPath.length) return;
-      state.drawPath.pop();
-      setStatus(`绘制路径长度：${state.drawPath.length}`);
-      renderAll();
-    }
-
-    function fillEmptyAsBlocked() {
-      for (const cell of allCells()) {
-        const key = cellKey(cell);
-        if (!state.gridMap.has(key)) state.blockedCells.add(key);
-      }
-      state.lastSolve = null;
-      setStatus("空格已设为禁区");
-      renderAll();
-    }
-
-    function clearBlockedCells() {
-      state.blockedCells.clear();
-      state.lastSolve = null;
-      setStatus("禁区已清除");
-      renderAll();
-    }
-
-    function exportLevel() {
-      const payload = {
-        SchemaVersion: 3,
-        BoardType: "cuboid",
-        Level: state.level,
-        BoxSize: cloneBoxSize(state.boxSize),
-        EditorConfig: {
-          LengthWeights: els.inputLengthWeights.value,
-          BendWeights: els.inputBendWeights.value,
-          CrossFaceRate: Number(els.inputCrossRate.value),
-          MaxFaceCrossings: Number(els.inputMaxCrossings.value),
-          FillRate: Number(els.inputFillRate.value),
-          LineStyle: state.lineStyle
-        },
-        BlockedCells: [...state.blockedCells].sort().map((key) => pathToken(parseCellKey(key))),
-        Arrows: state.arrows.map((arrow) => ({
-          Id: arrow.id,
-          Dir: arrow.dir,
-          Path: arrow.path.map(pathToken),
-          Color: arrow.color
-        }))
-      };
-      els.jsonBox.value = JSON.stringify(payload, null, 2);
-      els.jsonNote.textContent = `已导出 ${payload.Arrows.length} 支箭头`;
-      setStatus("JSON 已导出");
-    }
-
-    function parseCellKey(key) {
-      const [face, rc] = key.split(":");
-      const [rRaw, cRaw] = rc.split(",");
-      return { face, r: Number(rRaw), c: Number(cRaw) };
-    }
-
-    function importLevel() {
-      try {
-        const payload = JSON.parse(els.jsonBox.value);
-        if (payload.SchemaVersion !== 3) throw new Error("SchemaVersion 必须是 3");
-        if (payload.BoardType !== "cuboid") throw new Error("BoardType 必须是 cuboid");
-        if (!payload.BoxSize) throw new Error("需要 BoxSize 配置");
-        const nextBox = normalizeBoxSize(payload.BoxSize);
-        const nextDims = boxSizeToSurfaceDims(nextBox);
-        if (!Array.isArray(payload.Arrows)) throw new Error("Arrows 必须是数组");
-
-        const nextBlocked = new Set();
-        for (const token of payload.BlockedCells || []) {
-          const cell = parseBlockToken(token);
-          if (!isInBounds(cell, nextDims)) throw new Error(`禁区越界：${token}`);
-          nextBlocked.add(`${cell.face}:${cell.r},${cell.c}`);
-        }
-
-        const nextArrows = [];
-        for (const raw of payload.Arrows) {
-          if (!Number.isInteger(raw.Id)) throw new Error("Id 必须是数字");
-          if (!Object.keys(DIRS).includes(raw.Dir)) throw new Error(`3D MVP 不支持方向：${raw.Dir}`);
-          if (!Array.isArray(raw.Path)) throw new Error("Path 必须是数组");
-          const path = raw.Path.map(parsePathToken);
-          for (const cell of path) {
-            if (!isInBounds(cell, nextDims)) throw new Error(`路径越界：${pathToken(cell)}`);
-          }
-          const arrow = makeArrow(path, raw.Dir, raw.Color || PALETTE[raw.Id % PALETTE.length], raw.Id, nextDims);
-          nextArrows.push(arrow);
-        }
-
-        for (const arrow of nextArrows) {
-          validatePathGeometry(arrow.path, {
-            dir: arrow.dir,
-            ignoreArrowId: arrow.id,
-            arrows: nextArrows,
-            blockedCells: nextBlocked,
-            dims: nextDims
-          });
-        }
-
-        setBoxSize(nextBox);
-        state.blockedCells = nextBlocked;
-        state.arrows = nextArrows;
-        state.level = Number(payload.Level) || 1;
-        state.selectedArrowId = null;
-        state.drawPath = [];
-        state.lineStyle = Boolean(payload.EditorConfig?.LineStyle);
-        els.lineStyle.checked = state.lineStyle;
-        document.body.classList.toggle("line-style", state.lineStyle);
-        syncBoxSizeUI();
-        syncGrid();
-        state.lastSolve = quickSolveCheck();
-        setStatus(`导入完成：${state.arrows.length} 支箭头`);
-        renderAll();
-      } catch (error) {
-        setStatus(`导入失败：${error.message}`);
-      }
-    }
-
-    function downloadJson() {
-      if (!els.jsonBox.value.trim()) exportLevel();
-      const blob = new Blob([els.jsonBox.value], { type: "application/json" });
-      const url = URL.createObjectURL(blob);
-      const link = document.createElement("a");
-      link.href = url;
-      link.download = `cuboid_arrow_level_${String(state.level).padStart(4, "0")}.json`;
-      link.click();
-      URL.revokeObjectURL(url);
-      setStatus("JSON 文件已生成");
-    }
-
-    function loadSample() {
-      const sample = {
-        SchemaVersion: 3,
-        BoardType: "cuboid",
-        Level: 1,
-        BoxSize: { width: 7, height: 5, depth: 4 },
-        EditorConfig: {
-          LengthWeights: "1:8,2:20,3:30,4:24,5:12,6:6",
-          BendWeights: "0:40,1:35,2:20,3:5",
-          CrossFaceRate: 0.25,
-          MaxFaceCrossings: 3,
-          FillRate: 0.42,
-          LineStyle: false
-        },
-        BlockedCells: ["top:0_0", "bottom:3_6"],
-        Arrows: [
-          { Id: 0, Dir: "R", Path: ["front:3_1", "front:3_0", "left:3_3"], Color: "#178f83" },
-          { Id: 1, Dir: "U", Path: ["front:0_4", "front:1_4", "front:2_4"], Color: "#c56b36" },
-          { Id: 2, Dir: "L", Path: ["right:1_2", "right:1_3", "back:1_0"], Color: "#bf4360" },
-          { Id: 3, Dir: "L", Path: ["top:2_1", "top:2_2", "top:2_3"], Color: "#57965f" }
-        ]
-      };
-      els.jsonBox.value = JSON.stringify(sample, null, 2);
-      importLevel();
     }
 
     function renderAll() {
-      renderNet();
-      renderThree();
+      renderBlockList();
+      renderAtlas();
       renderStats();
       renderInspector();
-    }
-
-    function renderNet() {
-      els.cubeNet.innerHTML = "";
-      const removable = currentlyRemovableIds();
-      const drawKeys = new Set(state.drawPath.map(cellKey));
-      const selected = state.selectedArrowId;
-
-      for (const face of FACES) {
-        const tile = document.createElement("section");
-        tile.className = "face-tile";
-        tile.dataset.face = face;
-        tile.style.setProperty("--face-tint", FACE_TINTS[face]);
-        tile.style.setProperty("--face-rows", faceRows(face));
-        tile.style.setProperty("--face-cols", faceCols(face));
-
-        const title = document.createElement("div");
-        title.className = "face-title";
-        title.innerHTML = `<span>${FACE_LABELS[face]}</span><span class="face-axis">${faceRows(face)}x${faceCols(face)}</span>`;
-        tile.appendChild(title);
-
-        const grid = document.createElement("div");
-        grid.className = "face-grid";
-        for (let r = 0; r < faceRows(face); r += 1) {
-          for (let c = 0; c < faceCols(face); c += 1) {
-            const cell = { face, r, c };
-            const key = cellKey(cell);
-            const div = document.createElement("button");
-            div.type = "button";
-            div.className = "cell";
-            div.dataset.key = key;
-            div.title = pathToken(cell);
-            div.setAttribute("aria-label", pathToken(cell));
-
-            if (state.blockedCells.has(key)) div.classList.add("blocked");
-            if (drawKeys.has(key)) div.classList.add("in-draw");
-
-            const arrowId = state.gridMap.get(key);
-            if (arrowId !== undefined) {
-              const arrow = getArrowById(arrowId);
-              div.classList.add("occupied");
-              div.style.setProperty("--arrow-color", arrow.color);
-              if (sameCell(arrow.path[0], cell)) {
-                div.classList.add("head", `dir-${arrow.dir}`);
-              } else {
-                div.classList.add("body");
-              }
-              if (selected === arrowId) div.classList.add("selected");
-              if (removable.has(arrowId)) div.classList.add("removable");
-            }
-
-            div.addEventListener("click", () => handleCellAction(cell));
-            grid.appendChild(div);
-          }
-        }
-        tile.appendChild(grid);
-        els.cubeNet.appendChild(tile);
-      }
+      renderThree();
     }
 
     function renderStats() {
-      const total = totalCellCount();
-      const blocked = state.blockedCells.size;
-      const occupied = state.gridMap.size;
-      const removable = currentlyRemovableIds().size;
+      els.statBlocks.textContent = state.blocks.length;
+      els.statSurface.textContent = state.surface.cells.size;
       els.statArrows.textContent = state.arrows.length;
-      els.statCells.textContent = occupied;
-      els.statFree.textContent = Math.max(0, total - blocked - occupied);
-      els.statReady.textContent = removable;
-      els.boxSizeChip.textContent = boxSizeSummary();
-      els.boxDimsReadout.textContent = boxDerivedFacesSummary();
-      els.selectedChip.textContent = state.selectedArrowId === null ? "无选中" : `#${state.selectedArrowId}`;
-      if (!state.lastSolve) {
-        els.solveChip.textContent = "未校验";
-      } else {
-        els.solveChip.textContent = state.lastSolve.solvable ? "有解" : "无解";
+      els.statIssues.textContent = state.surface.issues.length;
+      els.cellChip.textContent = `${state.surface.cells.size} cells`;
+      els.snapChip.textContent = `${state.snapAngle}° snap`;
+      els.selectedChip.textContent = state.selectedCellId || state.selectedBlockId || "无选中";
+      els.mapChip.textContent = state.surface.canGenerate ? "可生成" : "需修正";
+      els.mapChip.className = `chip ${state.surface.canGenerate ? "good" : "warn"}`;
+      els.solveChip.textContent = state.lastSolve ? (state.lastSolve.solvable ? "有解" : "无解") : "未校验";
+      els.solveChip.className = `chip ${state.lastSolve?.solvable ? "good" : state.lastSolve ? "bad" : ""}`;
+      els.atlasSub.textContent = `${groupSurfaceAtlas().length} 个平面组 · ${state.surface.components.length} 个连通组件`;
+      renderIssues();
+    }
+
+    function renderIssues() {
+      els.issueList.innerHTML = "";
+      if (!state.surface.issues.length) {
+        const div = document.createElement("div");
+        div.className = "small-note";
+        div.textContent = "暂无结构问题";
+        els.issueList.appendChild(div);
+        return;
+      }
+      for (const issue of state.surface.issues.slice(0, 18)) {
+        const div = document.createElement("div");
+        div.className = "issue";
+        if (issue.type === "ambiguous_edge") {
+          div.textContent = `多候选边：${issue.cellId}|${issue.dir} -> ${issue.candidates.join("、")}`;
+        } else if (issue.type === "disconnected_surface") {
+          div.textContent = `地图未连通：${issue.components.map((item) => `${item.id}:${item.cellCount}`).join(" / ")}`;
+        } else if (issue.type === "empty_surface") {
+          div.textContent = "外表面为空";
+        } else {
+          div.textContent = issue.type;
+        }
+        els.issueList.appendChild(div);
+      }
+    }
+
+    function renderBlockList() {
+      els.blockList.innerHTML = "";
+      for (const block of state.blocks) {
+        const row = document.createElement("div");
+        row.className = `block-row ${block.id === state.selectedBlockId ? "active" : ""}`;
+        row.addEventListener("click", () => selectBlock(block.id));
+        const swatch = document.createElement("span");
+        swatch.className = "swatch";
+        swatch.style.background = block.color;
+        const meta = document.createElement("div");
+        meta.className = "block-meta";
+        meta.innerHTML = `<strong>Block ${block.id}</strong><span>${block.size.join("×")} · pos ${block.position.map((v) => Number(v.toFixed(1))).join(",")}</span>`;
+        const chip = document.createElement("span");
+        chip.className = "chip";
+        chip.textContent = block.rotationDeg.map((v) => Math.round(v)).join("/");
+        row.append(swatch, meta, chip);
+        els.blockList.appendChild(row);
+      }
+    }
+
+    function groupSurfaceAtlas() {
+      const groups = new Map();
+      for (const cell of state.surface.cells.values()) {
+        const key = planeKey(cell);
+        if (!groups.has(key)) groups.set(key, { key, cells: [], normal: cell.normal.clone(), origin: cell.center.clone() });
+        groups.get(key).cells.push(cell);
+      }
+      return [...groups.values()].sort((a, b) => b.cells.length - a.cells.length);
+    }
+
+    function atlasBasis(normal) {
+      const helper = Math.abs(normal.y) < 0.9 ? vec(0, 1, 0) : vec(1, 0, 0);
+      const u = new THREE.Vector3().crossVectors(helper, normal).normalize();
+      const v = new THREE.Vector3().crossVectors(normal, u).normalize();
+      return { u, v };
+    }
+
+    function renderAtlas() {
+      els.atlasList.innerHTML = "";
+      const drawSet = new Set(state.drawPath);
+      const groups = groupSurfaceAtlas();
+      for (const group of groups) {
+        const basis = atlasBasis(group.normal);
+        const positioned = group.cells.map((cell) => {
+          const rel = cell.center.clone().sub(group.origin);
+          return {
+            cell,
+            u: Math.round(rel.dot(basis.u)),
+            v: Math.round(rel.dot(basis.v))
+          };
+        });
+        const minU = Math.min(...positioned.map((item) => item.u));
+        const minV = Math.min(...positioned.map((item) => item.v));
+        const maxU = Math.max(...positioned.map((item) => item.u));
+        const maxV = Math.max(...positioned.map((item) => item.v));
+        const section = document.createElement("section");
+        section.className = "atlas-group";
+        const title = document.createElement("div");
+        title.className = "atlas-title";
+        title.innerHTML = `<span>${group.key}</span><span>${group.cells.length} cells</span>`;
+        const wrap = document.createElement("div");
+        wrap.className = "atlas-grid-wrap";
+        const grid = document.createElement("div");
+        grid.className = "atlas-grid";
+        grid.style.gridTemplateColumns = `repeat(${Math.max(1, maxU - minU + 1)}, 18px)`;
+        grid.style.gridTemplateRows = `repeat(${Math.max(1, maxV - minV + 1)}, 18px)`;
+        for (const item of positioned) {
+          const button = document.createElement("button");
+          button.className = "atlas-cell";
+          button.style.gridColumn = `${item.u - minU + 1}`;
+          button.style.gridRow = `${item.v - minV + 1}`;
+          button.title = item.cell.id;
+          if (state.blockedCells.has(item.cell.id)) button.classList.add("blocked");
+          const arrowId = state.gridMap.get(item.cell.id);
+          if (arrowId !== undefined) {
+            const arrow = getArrow(arrowId);
+            button.classList.add("occupied");
+            button.style.setProperty("--arrow-color", state.lineStyle ? "#f4fbff" : arrow.color);
+          }
+          if (state.selectedCellId === item.cell.id || drawSet.has(item.cell.id)) button.classList.add("selected");
+          button.addEventListener("click", () => handleCellAction(item.cell.id));
+          grid.appendChild(button);
+        }
+        wrap.appendChild(grid);
+        section.append(title, wrap);
+        els.atlasList.appendChild(section);
       }
     }
 
     function renderInspector() {
-      const arrow = getArrowById(state.selectedArrowId);
-      if (!arrow) {
-        els.selectedReadout.innerHTML = "<strong>未选中</strong><span>箭头路径会同步显示在展开图与正方体上。</span>";
-        els.inspectorTitle.textContent = "局部射线";
-        els.inspectorBody.textContent = "选择箭头后显示头部所在面的阻挡判断。";
-        return;
+      const selectedCell = state.surface.cells.get(state.selectedCellId);
+      const selectedBlock = getBlock(state.selectedBlockId);
+      if (selectedCell) {
+        const arrowId = state.gridMap.get(selectedCell.id);
+        els.atlasTitle.textContent = selectedCell.id;
+        els.atlasBody.textContent = `Block ${selectedCell.blockId} · ${selectedCell.face} · plane ${planeKey(selectedCell)}${arrowId !== undefined ? ` · arrow #${arrowId}` : ""}`;
+      } else {
+        els.atlasTitle.textContent = "未选中表面格";
+        els.atlasBody.textContent = "点击 3D 表面格或图集格子后显示 Block、面、路径信息。";
       }
-      const blockers = getRayBlockers(arrow);
-      const faces = [...new Set(arrow.path.map((cell) => cell.face))].join(" / ");
-      els.selectedReadout.innerHTML = `
-        <strong>#${arrow.id} ${arrow.dir}</strong>
-        <span>长度 ${arrow.path.length}，跨面 ${pathFaceCrossings(arrow.path)}，面 ${faces}</span>
-      `;
-      els.inspectorTitle.textContent = `#${arrow.id} ${arrow.dir} ${pathToken(arrow.path[0])}`;
-      els.inspectorBody.textContent = blockers.length
-        ? `阻挡：${blockers.map((item) => `#${item.id}@${pathToken(item.cell)}`).join("、")}`
-        : "当前头部所在面前方无阻挡。";
+      if (selectedBlock) {
+        els.inspectorTitle.textContent = `Block ${selectedBlock.id}`;
+        els.inspectorBody.textContent = `${selectedBlock.size.join("×")} · pos ${selectedBlock.position.map((v) => Number(v.toFixed(2))).join(", ")} · rot ${selectedBlock.rotationDeg.map((v) => Math.round(v)).join(", ")}`;
+      } else {
+        els.inspectorTitle.textContent = "结构射线";
+        els.inspectorBody.textContent = "组合体表面由 Block 原始外表面裁剪后生成。";
+      }
     }
 
     function setStatus(message) {
       els.statusLine.textContent = message;
     }
 
-    function faceFrame(face) {
-      const v = (x, y, z) => new THREE.Vector3(x, y, z);
-      const frames = {
-        front: { normal: v(0, 0, 1), right: v(1, 0, 0), down: v(0, -1, 0) },
-        right: { normal: v(1, 0, 0), right: v(0, 0, -1), down: v(0, -1, 0) },
-        back: { normal: v(0, 0, -1), right: v(-1, 0, 0), down: v(0, -1, 0) },
-        left: { normal: v(-1, 0, 0), right: v(0, 0, 1), down: v(0, -1, 0) },
-        top: { normal: v(0, 1, 0), right: v(1, 0, 0), down: v(0, 0, 1) },
-        bottom: { normal: v(0, -1, 0), right: v(1, 0, 0), down: v(0, 0, -1) }
-      };
-      return frames[face];
-    }
-
-    function faceQuaternion(face) {
-      const frame = faceFrame(face);
-      const up = frame.down.clone().multiplyScalar(-1);
-      const matrix = new THREE.Matrix4();
-      matrix.makeBasis(frame.right, up, frame.normal);
-      return new THREE.Quaternion().setFromRotationMatrix(matrix);
-    }
-
-    function boxWorldSize() {
-      const measures = boxMeasures();
-      const unit = 3.4 / Math.max(measures.width, measures.height, measures.depth);
-      return {
-        unit,
-        width: measures.width * unit,
-        height: measures.height * unit,
-        depth: measures.depth * unit
-      };
-    }
-
-    function normalHalfSize(face, size) {
-      if (face === "left" || face === "right") return size.width / 2;
-      if (face === "top" || face === "bottom") return size.height / 2;
-      return size.depth / 2;
-    }
-
-    function cellWorld(cell, offset = 0.018) {
-      const size = boxWorldSize();
-      const unit = size.unit;
-      const frame = faceFrame(cell.face);
-      const x = (cell.c + 0.5 - faceCols(cell.face) / 2) * unit;
-      const y = (cell.r + 0.5 - faceRows(cell.face) / 2) * unit;
-      const position = frame.normal.clone().multiplyScalar(normalHalfSize(cell.face, size) + offset)
-        .add(frame.right.clone().multiplyScalar(x))
-        .add(frame.down.clone().multiplyScalar(y));
-      return { position, unit, normal: frame.normal, quaternion: faceQuaternion(cell.face) };
-    }
-
     function initThree() {
       scene = new THREE.Scene();
-      scene.background = new THREE.Color(0xf6f8f4);
-      camera = new THREE.PerspectiveCamera(42, 1, 0.1, 100);
-      camera.position.set(4.6, 4.2, 5.8);
+      scene.background = new THREE.Color(0x070d14);
+      camera = new THREE.PerspectiveCamera(42, 1, 0.1, 200);
+      camera.position.set(9, 7, 10);
       renderer = new THREE.WebGLRenderer({
         canvas: els.threeCanvas,
         antialias: true,
@@ -2154,30 +2314,69 @@
       controls.dampingFactor = 0.08;
       controls.enablePan = true;
       controls.enableZoom = true;
-      controls.minDistance = 3.4;
-      controls.maxDistance = 11;
-      controls.target.set(0, 0, 0);
-
+      controls.minDistance = 4;
+      controls.maxDistance = 32;
       raycaster = new THREE.Raycaster();
       pointer = new THREE.Vector2();
-      cubeGroup = new THREE.Group();
-      scene.add(cubeGroup);
-
-      scene.add(new THREE.HemisphereLight(0xffffff, 0x66736d, 2.15));
-      const key = new THREE.DirectionalLight(0xffffff, 1.8);
-      key.position.set(4, 6, 5);
+      worldGroup = new THREE.Group();
+      scene.add(worldGroup);
+      scene.add(new THREE.HemisphereLight(0xffffff, 0x334455, 2.2));
+      const key = new THREE.DirectionalLight(0xffffff, 2);
+      key.position.set(6, 9, 7);
       scene.add(key);
-      const edgeLight = new THREE.DirectionalLight(0xf0b45c, 0.85);
-      edgeLight.position.set(-5, 2, -4);
-      scene.add(edgeLight);
-
-      renderer.domElement.addEventListener("pointerdown", handlePointerDown);
+      const rim = new THREE.DirectionalLight(0x7adfff, 1.2);
+      rim.position.set(-7, 2, -5);
+      scene.add(rim);
+      renderer.domElement.addEventListener("pointerdown", (event) => {
+        pointerDown = { x: event.clientX, y: event.clientY, time: performance.now() };
+      });
       renderer.domElement.addEventListener("pointerup", handlePointerUp);
-
       const resizeObserver = new ResizeObserver(resizeThree);
       resizeObserver.observe(els.viewportHost);
       resizeThree();
+      resetCameraView(false);
       animate();
+    }
+
+    function worldBoundsForBlocks() {
+      const bounds = new THREE.Box3();
+      let hasPoint = false;
+      for (const block of state.blocks) {
+        if (!block.visible) continue;
+        const [width, height, depth] = block.size;
+        for (const sx of [-0.5, 0.5]) {
+          for (const sy of [-0.5, 0.5]) {
+            for (const sz of [-0.5, 0.5]) {
+              bounds.expandByPoint(localToWorld(block, vec(sx * width, sy * height, sz * depth)));
+              hasPoint = true;
+            }
+          }
+        }
+      }
+      if (!hasPoint) bounds.setFromCenterAndSize(vec(0, 0, 0), vec(6, 6, 6));
+      return bounds;
+    }
+
+    function resetCameraView(announce = true) {
+      if (!camera || !controls) return;
+      const bounds = worldBoundsForBlocks();
+      const center = bounds.getCenter(new THREE.Vector3());
+      const size = bounds.getSize(new THREE.Vector3());
+      const maxDim = Math.max(size.x, size.y, size.z, 4);
+      const radius = Math.max(size.length() * 0.55, maxDim * 0.75, 4);
+      const distance = Math.max(7, radius / Math.sin(THREE.MathUtils.degToRad(camera.fov) / 2) * 1.05);
+      const direction = vec(0.92, 0.68, 1).normalize();
+      controls.target.copy(center);
+      camera.position.copy(center.clone().add(direction.multiplyScalar(distance)));
+      camera.near = Math.max(0.05, distance / 1000);
+      camera.far = Math.max(200, distance * 6);
+      camera.lookAt(center);
+      camera.updateProjectionMatrix();
+      controls.minDistance = Math.max(2, radius * 0.25);
+      controls.maxDistance = Math.max(32, distance * 4);
+      controls.update();
+      renderFrame();
+      if (announce) setStatus("视角已复位");
     }
 
     function resizeThree() {
@@ -2188,169 +2387,217 @@
       renderer.setSize(width, height, false);
       camera.aspect = width / height;
       camera.updateProjectionMatrix();
+      renderFrame();
+    }
+
+    function renderFrame() {
+      if (!renderer || !scene || !camera) return;
+      controls?.update();
+      renderer.render(scene, camera);
     }
 
     function animate() {
       animationHandle = requestAnimationFrame(animate);
-      controls.update();
-      renderer.render(scene, camera);
+      renderFrame();
     }
 
     function disposeGroup(group) {
       while (group.children.length) {
         const child = group.children.pop();
         child.traverse?.((node) => {
-          if (node.geometry) node.geometry.dispose();
-          if (node.material) {
-            if (Array.isArray(node.material)) node.material.forEach((mat) => mat.dispose());
-            else node.material.dispose();
-          }
+          node.geometry?.dispose?.();
+          if (Array.isArray(node.material)) node.material.forEach((mat) => mat.dispose?.());
+          else node.material?.dispose?.();
         });
       }
     }
 
     function renderThree() {
-      if (!cubeGroup) return;
-      disposeGroup(cubeGroup);
-      const selected = state.selectedArrowId;
-      const removable = currentlyRemovableIds();
-      const drawKeys = new Set(state.drawPath.map(cellKey));
-      const worldSize = boxWorldSize();
-      const unit = worldSize.unit;
-      const cellGeo = new THREE.PlaneGeometry(unit * 0.92, unit * 0.92);
+      if (!worldGroup) return;
+      disposeGroup(worldGroup);
       const interactive = [];
+      renderBlockShells();
+      renderSurfaceCells(interactive);
+      renderCoveredCells();
+      renderArrows();
+      renderIssueEdges();
+      worldGroup.userData.interactive = interactive;
+      renderFrame();
+    }
 
-      for (const face of FACES) {
-        for (let r = 0; r < faceRows(face); r += 1) {
-          for (let c = 0; c < faceCols(face); c += 1) {
-            const cell = { face, r, c };
-            const key = cellKey(cell);
-            const arrowId = state.gridMap.get(key);
-            const arrow = arrowId !== undefined ? getArrowById(arrowId) : null;
-            const isSelected = arrow && arrow.id === selected;
-            let color = FACE_TINTS[face];
-            let roughness = 0.78;
-            let metalness = 0.02;
-            if (state.blockedCells.has(key)) color = "#748078";
-            if (drawKeys.has(key)) color = "#e3ad37";
-            if (arrow) color = state.lineStyle ? "#fdfefd" : arrow.color;
+    function renderBlockShells() {
+      for (const block of state.blocks) {
+        if (!block.visible) continue;
+        const geo = new THREE.BoxGeometry(block.size[0], block.size[1], block.size[2]);
+        const mat = new THREE.MeshStandardMaterial({
+          color: block.color,
+          transparent: true,
+          opacity: block.id === state.selectedBlockId ? 0.14 : 0.07,
+          roughness: 0.62,
+          metalness: 0.08,
+          side: THREE.DoubleSide
+        });
+        const mesh = new THREE.Mesh(geo, mat);
+        mesh.position.set(...block.position);
+        mesh.quaternion.copy(blockQuaternion(block));
+        worldGroup.add(mesh);
+        const edges = new THREE.EdgesGeometry(geo);
+        const lineMat = new THREE.LineBasicMaterial({ color: block.id === state.selectedBlockId ? 0xa8ef32 : 0x93b8cf, transparent: true, opacity: block.id === state.selectedBlockId ? 0.92 : 0.34 });
+        const lines = new THREE.LineSegments(edges, lineMat);
+        lines.position.copy(mesh.position);
+        lines.quaternion.copy(mesh.quaternion);
+        worldGroup.add(lines);
+      }
+    }
 
-            const mat = new THREE.MeshStandardMaterial({
-              color,
-              roughness,
-              metalness,
-              transparent: true,
-              opacity: arrow || state.blockedCells.has(key) || drawKeys.has(key) ? 0.96 : 0.72,
-              side: THREE.DoubleSide,
-              emissive: isSelected ? new THREE.Color(0x1c78b9) : new THREE.Color(0x000000),
-              emissiveIntensity: isSelected ? 0.18 : 0
-            });
-            const mesh = new THREE.Mesh(cellGeo, mat);
-            const world = cellWorld(cell, arrow ? 0.035 : 0.014);
-            mesh.position.copy(world.position);
-            mesh.quaternion.copy(world.quaternion);
-            mesh.userData = { type: arrow ? "arrow" : "cell", face, r, c, arrowId };
-            cubeGroup.add(mesh);
-            interactive.push(mesh);
+    function cellQuaternion(cell) {
+      const xAxis = cell.tangentU.clone().normalize();
+      const yAxis = cell.tangentV.clone().multiplyScalar(-1).normalize();
+      const zAxis = cell.normal.clone().normalize();
+      const matrix = new THREE.Matrix4();
+      matrix.makeBasis(xAxis, yAxis, zAxis);
+      return new THREE.Quaternion().setFromRotationMatrix(matrix);
+    }
 
-            if (arrow && removable.has(arrow.id)) {
-              const ringGeo = new THREE.RingGeometry(unit * 0.33, unit * 0.43, 24);
-              const ringMat = new THREE.MeshBasicMaterial({ color: 0x57965f, transparent: true, opacity: 0.82, side: THREE.DoubleSide });
-              const ring = new THREE.Mesh(ringGeo, ringMat);
-              ring.position.copy(cellWorld(cell, 0.052).position);
-              ring.quaternion.copy(world.quaternion);
-              cubeGroup.add(ring);
-            }
-          }
+    function renderSurfaceCells(interactive) {
+      const removable = currentlyRemovableIds();
+      const drawSet = new Set(state.drawPath);
+      const cellGeo = new THREE.PlaneGeometry(0.92, 0.92);
+      for (const cell of state.surface.cells.values()) {
+        const arrowId = state.gridMap.get(cell.id);
+        const arrow = arrowId !== undefined ? getArrow(arrowId) : null;
+        const block = getBlock(cell.blockId);
+        let color = block?.color || "#19d8ff";
+        let opacity = 0.38;
+        if (state.blockedCells.has(cell.id)) {
+          color = "#687988";
+          opacity = 0.9;
+        }
+        if (drawSet.has(cell.id)) {
+          color = "#ffc857";
+          opacity = 0.96;
+        }
+        if (arrow) {
+          color = state.lineStyle ? "#f4fbff" : arrow.color;
+          opacity = 0.96;
+        }
+        const selected = state.selectedCellId === cell.id || (arrow && arrow.id === state.selectedArrowId);
+        const mat = new THREE.MeshStandardMaterial({
+          color,
+          transparent: true,
+          opacity,
+          roughness: 0.58,
+          metalness: 0.04,
+          side: THREE.DoubleSide,
+          emissive: selected ? new THREE.Color(0xa8ef32) : new THREE.Color(0x000000),
+          emissiveIntensity: selected ? 0.28 : 0
+        });
+        const mesh = new THREE.Mesh(cellGeo, mat);
+        mesh.position.copy(cell.center.clone().add(cell.normal.clone().multiplyScalar(0.018)));
+        mesh.quaternion.copy(cellQuaternion(cell));
+        mesh.userData = { type: "cell", cellId: cell.id, blockId: cell.blockId };
+        worldGroup.add(mesh);
+        interactive.push(mesh);
+        if (arrow && removable.has(arrow.id)) {
+          const ring = new THREE.Mesh(
+            new THREE.RingGeometry(0.31, 0.41, 28),
+            new THREE.MeshBasicMaterial({ color: 0xa8ef32, transparent: true, opacity: 0.78, side: THREE.DoubleSide })
+          );
+          ring.position.copy(cell.center.clone().add(cell.normal.clone().multiplyScalar(0.038)));
+          ring.quaternion.copy(mesh.quaternion);
+          worldGroup.add(ring);
         }
       }
+    }
 
+    function renderCoveredCells() {
+      if (!state.showCovered) return;
+      const cellGeo = new THREE.PlaneGeometry(0.9, 0.9);
+      for (const cell of state.surface.coveredCells) {
+        const mat = new THREE.MeshBasicMaterial({ color: 0xff4f7a, transparent: true, opacity: 0.22, side: THREE.DoubleSide });
+        const mesh = new THREE.Mesh(cellGeo, mat);
+        mesh.position.copy(cell.center.clone().add(cell.normal.clone().multiplyScalar(0.012)));
+        mesh.quaternion.copy(cellQuaternion(cell));
+        worldGroup.add(mesh);
+      }
+    }
+
+    function renderArrows() {
       for (const arrow of state.arrows) {
-        addPathConnectors(arrow);
+        for (let i = 1; i < arrow.path.length; i += 1) {
+          const a = state.surface.cells.get(arrow.path[i - 1]);
+          const b = state.surface.cells.get(arrow.path[i]);
+          if (!a || !b) continue;
+          const start = a.center.clone().add(a.normal.clone().multiplyScalar(0.08));
+          const end = b.center.clone().add(b.normal.clone().multiplyScalar(0.08));
+          const cylinder = cylinderBetween(start, end, 0.07, state.lineStyle ? "#f4fbff" : arrow.color);
+          cylinder.userData = { type: "arrow", arrowId: arrow.id };
+          worldGroup.add(cylinder);
+        }
         addHeadTriangle(arrow);
       }
-
-      addCubeEdges(worldSize);
-      cubeGroup.userData.interactive = interactive;
-    }
-
-    function addPathConnectors(arrow) {
-      const color = state.lineStyle ? "#101614" : arrow.color;
-      for (let i = 1; i < arrow.path.length; i += 1) {
-        const a = cellWorld(arrow.path[i - 1], 0.068).position;
-        const b = cellWorld(arrow.path[i], 0.068).position;
-        const cylinder = cylinderBetween(a, b, unitRadius(), color);
-        cylinder.userData = { type: "arrow", arrowId: arrow.id };
-        cubeGroup.add(cylinder);
-      }
-    }
-
-    function unitRadius() {
-      return boxWorldSize().unit * 0.065;
     }
 
     function cylinderBetween(a, b, radius, color) {
       const direction = b.clone().sub(a);
       const length = direction.length();
-      const geometry = new THREE.CylinderGeometry(radius, radius, Math.max(0.001, length), 10);
-      const material = new THREE.MeshStandardMaterial({
-        color,
-        roughness: 0.54,
-        metalness: 0.04
-      });
+      const geometry = new THREE.CylinderGeometry(radius, radius, Math.max(0.001, length), 12);
+      const material = new THREE.MeshStandardMaterial({ color, roughness: 0.42, metalness: 0.08 });
       const mesh = new THREE.Mesh(geometry, material);
       mesh.position.copy(a.clone().add(b).multiplyScalar(0.5));
       mesh.quaternion.setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.normalize());
       return mesh;
     }
 
-    function addHeadTriangle(arrow) {
-      const head = arrow.path[0];
-      const world = cellWorld(head, 0.09);
-      const size = world.unit * 0.34;
-      const shape = new THREE.Shape();
-      const points = trianglePoints(arrow.dir, size);
-      shape.moveTo(points[0][0], points[0][1]);
-      shape.lineTo(points[1][0], points[1][1]);
-      shape.lineTo(points[2][0], points[2][1]);
-      shape.closePath();
-      const geometry = new THREE.ShapeGeometry(shape);
-      const material = new THREE.MeshStandardMaterial({
-        color: state.lineStyle ? "#101614" : "#16201c",
-        roughness: 0.48,
-        metalness: 0.02,
-        side: THREE.DoubleSide,
-        emissive: arrow.id === state.selectedArrowId ? new THREE.Color(0x1c78b9) : new THREE.Color(0x000000),
-        emissiveIntensity: arrow.id === state.selectedArrowId ? 0.24 : 0
-      });
-      const mesh = new THREE.Mesh(geometry, material);
-      mesh.position.copy(world.position);
-      mesh.quaternion.copy(world.quaternion);
-      mesh.userData = { type: "arrow", arrowId: arrow.id };
-      cubeGroup.add(mesh);
-    }
-
     function trianglePoints(dir, size) {
       const s = size;
-      const map = {
+      return {
         U: [[0, s], [-s * 0.78, -s * 0.62], [s * 0.78, -s * 0.62]],
         D: [[0, -s], [s * 0.78, s * 0.62], [-s * 0.78, s * 0.62]],
         L: [[-s, 0], [s * 0.62, -s * 0.78], [s * 0.62, s * 0.78]],
         R: [[s, 0], [-s * 0.62, s * 0.78], [-s * 0.62, -s * 0.78]]
-      };
-      return map[dir];
+      }[dir];
     }
 
-    function addCubeEdges(size) {
-      const geometry = new THREE.BoxGeometry(size.width + 0.012, size.height + 0.012, size.depth + 0.012);
-      const edges = new THREE.EdgesGeometry(geometry);
-      const material = new THREE.LineBasicMaterial({ color: 0x17201d, transparent: true, opacity: 0.38 });
-      const lines = new THREE.LineSegments(edges, material);
-      cubeGroup.add(lines);
+    function addHeadTriangle(arrow) {
+      const cell = state.surface.cells.get(arrow.path[0]);
+      if (!cell) return;
+      const shape = new THREE.Shape();
+      const points = trianglePoints(arrow.dir, 0.36);
+      shape.moveTo(points[0][0], points[0][1]);
+      shape.lineTo(points[1][0], points[1][1]);
+      shape.lineTo(points[2][0], points[2][1]);
+      shape.closePath();
+      const mesh = new THREE.Mesh(
+        new THREE.ShapeGeometry(shape),
+        new THREE.MeshStandardMaterial({
+          color: state.lineStyle ? "#071018" : "#061018",
+          roughness: 0.45,
+          metalness: 0.05,
+          side: THREE.DoubleSide,
+          emissive: arrow.id === state.selectedArrowId ? new THREE.Color(0xa8ef32) : new THREE.Color(0x000000),
+          emissiveIntensity: arrow.id === state.selectedArrowId ? 0.3 : 0
+        })
+      );
+      mesh.position.copy(cell.center.clone().add(cell.normal.clone().multiplyScalar(0.11)));
+      mesh.quaternion.copy(cellQuaternion(cell));
+      mesh.userData = { type: "arrow", arrowId: arrow.id };
+      worldGroup.add(mesh);
     }
 
-    function handlePointerDown(event) {
-      pointerDown = { x: event.clientX, y: event.clientY, time: performance.now() };
+    function renderIssueEdges() {
+      const material = new THREE.LineBasicMaterial({ color: 0xff4f7a, transparent: true, opacity: 0.95 });
+      for (const issue of state.surface.issues) {
+        if (issue.type !== "ambiguous_edge") continue;
+        const cell = state.surface.cells.get(issue.cellId);
+        if (!cell) continue;
+        const edge = cell.edges[issue.dir];
+        const geo = new THREE.BufferGeometry().setFromPoints([
+          edge.a.clone().add(cell.normal.clone().multiplyScalar(0.08)),
+          edge.b.clone().add(cell.normal.clone().multiplyScalar(0.08))
+        ]);
+        worldGroup.add(new THREE.Line(geo, material));
+      }
     }
 
     function handlePointerUp(event) {
@@ -2359,121 +2606,86 @@
       const elapsed = performance.now() - pointerDown.time;
       pointerDown = null;
       if (moved > 6 || elapsed > 650) return;
-
       const rect = renderer.domElement.getBoundingClientRect();
       pointer.x = ((event.clientX - rect.left) / rect.width) * 2 - 1;
       pointer.y = -((event.clientY - rect.top) / rect.height) * 2 + 1;
       raycaster.setFromCamera(pointer, camera);
-      const hits = raycaster.intersectObjects(cubeGroup.userData.interactive || [], false);
+      const hits = raycaster.intersectObjects(worldGroup.userData.interactive || [], false);
       if (!hits.length) return;
       const data = hits[0].object.userData;
-      handleCellAction({ face: data.face, r: data.r, c: data.c });
-    }
-
-    function resetView() {
-      camera.position.set(4.6, 4.2, 5.8);
-      controls.target.set(0, 0, 0);
-      controls.update();
-      setStatus("视角已重置");
-    }
-
-    function runCheck() {
-      state.lastSolve = quickSolveCheck();
-      if (state.lastSolve.solvable) {
-        setStatus(`有解，求解序列 ${state.lastSolve.removed.length} 步`);
-      } else {
-        setStatus(`无解，卡住箭头：${state.lastSolve.stuck.join("、") || "无"}`);
-      }
-      renderAll();
-    }
-
-    function clearLevel() {
-      state.arrows = [];
-      state.blockedCells.clear();
-      state.selectedArrowId = null;
-      state.drawPath = [];
-      state.lastSolve = null;
-      syncGrid();
-      setStatus("已清空");
-      renderAll();
+      if (data.cellId) handleCellAction(data.cellId);
     }
 
     function wireEvents() {
-      document.getElementById("btnGenerate").addEventListener("click", fillFullCubeMap);
-      document.getElementById("btnAdd").addEventListener("click", () => {
-        const ok = addRandomArrow(true);
-        if (!ok) setStatus("没有找到可放置箭头");
-        renderAll();
+      document.getElementById("btnGenerate").addEventListener("click", fillGeneratedArrows);
+      document.getElementById("btnValidate").addEventListener("click", runValidate);
+      document.getElementById("btnExport").addEventListener("click", () => {
+        exportLevel();
+        setStatus("JSON 已导出");
       });
-      document.getElementById("btnCheck").addEventListener("click", runCheck);
-      document.getElementById("btnExport").addEventListener("click", exportLevel);
-      document.getElementById("btnClear").addEventListener("click", clearLevel);
-      document.getElementById("btnFillBlocks").addEventListener("click", fillEmptyAsBlocked);
-      document.getElementById("btnClearBlocks").addEventListener("click", clearBlockedCells);
-      document.getElementById("btnResetView").addEventListener("click", resetView);
+      document.getElementById("btnClearArrows").addEventListener("click", clearArrows);
+      document.getElementById("btnAddBlock").addEventListener("click", () => addBlock());
+      document.getElementById("btnAttachBlock").addEventListener("click", attachBlockToSelectedCell);
+      document.getElementById("btnDuplicateBlock").addEventListener("click", duplicateSelectedBlock);
+      document.getElementById("btnDeleteBlock").addEventListener("click", deleteSelectedBlock);
+      document.getElementById("btnMoveBlockToCell").addEventListener("click", moveSelectedBlockToCell);
+      document.getElementById("btnApplyBlock").addEventListener("click", applyBlockForm);
       document.getElementById("btnUndoDraw").addEventListener("click", undoDrawPath);
       document.getElementById("btnFinishDraw").addEventListener("click", finishDrawPath);
-      document.getElementById("btnRemoveSelected").addEventListener("click", () => {
-        if (state.selectedArrowId === null) return setStatus("未选中箭头");
-        removeArrowById(state.selectedArrowId);
-      });
-      document.getElementById("btnDeleteSelected").addEventListener("click", () => {
-        if (state.selectedArrowId === null) return setStatus("未选中箭头");
-        removeArrowById(state.selectedArrowId, true);
-      });
+      document.getElementById("btnClearBlocks").addEventListener("click", clearBlockedCells);
       document.getElementById("btnSolveStep").addEventListener("click", removeOneBatch);
+      document.getElementById("btnResetCamera").addEventListener("click", () => resetCameraView(true));
       document.getElementById("btnImport").addEventListener("click", importLevel);
       document.getElementById("btnDownload").addEventListener("click", downloadJson);
       document.getElementById("btnSample").addEventListener("click", loadSample);
-      document.getElementById("btnApplyBoxSize").addEventListener("click", applyBoxSizeFromUI);
-
-      for (const button of document.querySelectorAll(".segmented button")) {
-        button.addEventListener("click", () => setMode(button.dataset.mode));
-      }
-
+      els.inputSnap.addEventListener("change", () => {
+        state.snapAngle = Number(els.inputSnap.value) || 15;
+        renderStats();
+      });
+      els.inputDebugCovered.addEventListener("change", () => {
+        state.showCovered = els.inputDebugCovered.checked;
+        renderThree();
+      });
       els.lineStyle.addEventListener("change", () => {
         state.lineStyle = els.lineStyle.checked;
         document.body.classList.toggle("line-style", state.lineStyle);
         renderAll();
       });
-    }
-
-    function runTopologySelfCheck() {
-      const errors = [];
-      for (const face of FACES) {
-        for (let r = 0; r < faceRows(face); r += 1) {
-          for (let c = 0; c < faceCols(face); c += 1) {
-            const cell = { face, r, c };
-            const neighbors = getSurfaceNeighbors(cell);
-            if (neighbors.length !== 4) errors.push(`${pathToken(cell)} neighbor count`);
-            for (const step of neighbors) {
-              if (!isInBounds(step.cell)) errors.push(`${pathToken(cell)} -> out of bounds`);
-              const back = getSurfaceNeighbors(step.cell).some((candidate) => sameCell(candidate.cell, cell));
-              if (!back) errors.push(`${pathToken(cell)} -> ${pathToken(step.cell)} not reversible`);
-            }
-          }
-        }
+      for (const button of document.querySelectorAll(".segmented button")) {
+        button.addEventListener("click", () => setMode(button.dataset.mode));
       }
-      if (errors.length) {
-        console.warn("Cuboid topology self-check errors", errors.slice(0, 20));
-        setStatus(`拓扑检查发现 ${errors.length} 个问题`);
+      for (const button of document.querySelectorAll("[data-move-axis]")) {
+        button.addEventListener("click", () => nudgeSelectedBlock(Number(button.dataset.moveAxis), Number(button.dataset.moveDelta)));
+      }
+      for (const button of document.querySelectorAll("[data-rotate-axis]")) {
+        button.addEventListener("click", () => rotateSelectedBlock(Number(button.dataset.rotateAxis), Number(button.dataset.rotateDelta)));
       }
     }
 
-    syncBoxSizeUI();
-    wireEvents();
-    syncGrid();
-    initThree();
-    runTopologySelfCheck();
-    renderAll();
-    exportLevel();
+    function bootstrap() {
+      state.blocks = [
+        normalizeBlock({ Id: "A", Size: [6, 4, 4], Position: [0, 0, 0], RotationDeg: [0, 0, 0], Color: "#19d8ff" }, "A"),
+        normalizeBlock({ Id: "B", Size: [4, 4, 4], Position: [5, 0, 0], RotationDeg: [0, 0, 0], Color: "#b875ff" }, "B")
+      ];
+      state.selectedBlockId = "A";
+      buildSurface();
+      syncBlockForm();
+      wireEvents();
+      initThree();
+      renderAll();
+      exportLevel();
+    }
 
-    window.cubeArrowEditor = {
+    bootstrap();
+
+    window.compoundArrowEditor = {
       state,
-      getSurfaceStep,
-      getSurfaceNeighbors,
-      getLocalRayOnFace,
+      buildSurface,
+      findDirectionBetweenCells,
+      getPlanarRay,
       quickSolveCheck,
+      moveSelectedBlockToCell,
+      resetCameraView,
       exportLevel,
       importLevel
     };

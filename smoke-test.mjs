@@ -19,18 +19,78 @@ async function canvasStats(page) {
     const ctx = probe.getContext("2d");
     ctx.drawImage(canvas, 0, 0);
     const data = ctx.getImageData(0, 0, probe.width, probe.height).data;
-    let varied = 0;
     let alpha = 0;
-    for (let i = 0; i < data.length; i += 64) {
+    let varied = 0;
+    for (let i = 0; i < data.length; i += 96) {
       const r = data[i];
       const g = data[i + 1];
       const b = data[i + 2];
       const a = data[i + 3];
       if (a > 0) alpha += 1;
-      if (a > 0 && !(r > 238 && g > 240 && b > 234)) varied += 1;
+      if (a > 0 && (Math.abs(r - 7) > 4 || Math.abs(g - 13) > 4 || Math.abs(b - 20) > 4)) varied += 1;
     }
     return { width: canvas.width, height: canvas.height, alpha, varied };
   });
+}
+
+async function exportPayload(page) {
+  await click(page, "#btnExport");
+  await page.waitForTimeout(120);
+  return page.evaluate(() => JSON.parse(document.querySelector("#jsonBox").value));
+}
+
+async function click(page, selector) {
+  await page.locator(selector).click({ force: true });
+}
+
+async function importPayload(page, payload) {
+  await page.evaluate((nextPayload) => {
+    document.querySelector("#jsonBox").value = JSON.stringify(nextPayload, null, 2);
+  }, payload);
+  await click(page, "#btnImport");
+  await page.waitForTimeout(250);
+}
+
+function baseBlockPayload(arrows = []) {
+  return {
+    SchemaVersion: 4,
+    BoardType: "compound_blocks",
+    Level: 1,
+    GridUnit: 1,
+    Snap: {
+      AngleStep: 15,
+      AngleOptions: [15, 30, 45, 90],
+      PositionStep: 1
+    },
+    Blocks: [
+      {
+        Id: "A",
+        Size: [4, 4, 4],
+        Position: [0, 0, 0],
+        RotationDeg: [0, 0, 0],
+        RotationOrder: "XYZ",
+        Color: "#19d8ff",
+        Locked: false,
+        Visible: true
+      }
+    ],
+    SurfacePolicy: {
+      CoverageRule: "cell_center_inside_other_block",
+      RemoveFaceContact: true,
+      GenerateCutInteriorFaces: false,
+      RequireConnected: true,
+      RejectAmbiguousEdges: true
+    },
+    EditorConfig: {
+      LengthWeights: "2:20,3:30,4:24,5:14,6:8",
+      BendWeights: "0:32,1:38,2:24,3:6",
+      CrossFaceRate: 0.25,
+      FillRate: 0.34,
+      LineStyle: false
+    },
+    BlockedCells: [],
+    Arrows: arrows
+  };
 }
 
 async function runViewport(browser, viewport, screenshotPath) {
@@ -40,72 +100,130 @@ async function runViewport(browser, viewport, screenshotPath) {
     if (msg.type() === "error" || msg.type() === "warning") messages.push(`${msg.type()}: ${msg.text()}`);
   });
   page.on("pageerror", (error) => messages.push(`pageerror: ${error.message}`));
+
   await page.goto(url, { waitUntil: "networkidle" });
   await page.waitForSelector("#threeViewport");
   await page.waitForTimeout(900);
+
   const before = await canvasStats(page);
-  await page.click("#btnGenerate");
-  await page.waitForTimeout(1200);
-  const after = await canvasStats(page);
-  await page.click("#btnSample");
-  await page.waitForTimeout(700);
-  const cuboidStats = await page.evaluate(() => ({
-    boardType: JSON.parse(document.querySelector("#jsonBox").value).BoardType,
-    boxSize: JSON.parse(document.querySelector("#jsonBox").value).BoxSize,
-    free: document.querySelector("#statFree").textContent,
-    chip: document.querySelector("#boxSizeChip").textContent,
-    readout: document.querySelector("#boxDimsReadout").textContent,
+  const initial = await exportPayload(page);
+  const initialStats = await page.evaluate(() => ({
+    title: document.querySelector("h1").textContent,
+    statBlocks: document.querySelector("#statBlocks").textContent,
+    statSurface: Number(document.querySelector("#statSurface").textContent),
+    mapChip: document.querySelector("#mapChip").textContent,
+    overflowX: document.documentElement.scrollWidth > document.documentElement.clientWidth + 2,
+    hasMoveButton: Boolean(document.querySelector("#btnMoveBlockToCell")),
+    hasResetButton: Boolean(document.querySelector("#btnResetCamera")),
+    hasExactPanel: Boolean(document.querySelector(".exact-panel")),
+    exportedFns: Object.keys(window.compoundArrowEditor || {})
+  }));
+
+  await click(page, "#btnGenerate");
+  await page.waitForTimeout(1400);
+  const generated = await exportPayload(page);
+  const generatedStats = await page.evaluate(() => ({
+    arrows: Number(document.querySelector("#statArrows").textContent),
+    solveChip: document.querySelector("#solveChip").textContent,
     status: document.querySelector("#statusLine").textContent
   }));
-  await page.evaluate(() => {
-    const bad = {
-      SchemaVersion: 3,
-      BoardType: "cuboid",
-      BoxSize: { width: 6, height: 6, depth: 6 },
-      Arrows: [
-        { Id: 0, Dir: "L", Path: ["front:3_2", "front:2_2", "front:1_2"], Color: "#178f83" }
-      ]
-    };
-    document.querySelector("#jsonBox").value = JSON.stringify(bad);
-  });
-  await page.click("#btnImport");
+
+  await click(page, "#btnSample");
+  await page.waitForTimeout(500);
+  const sample = await exportPayload(page);
+
+  const sampleAPosition = sample.Blocks.find((block) => block.Id === "A").Position;
+  await page.locator('[data-move-axis="0"][data-move-delta="1"]').click({ force: true });
+  await page.waitForTimeout(350);
+  const nudgeStatus = await page.locator("#statusLine").innerText();
+  const nudged = await exportPayload(page);
+
+  await page.locator('[data-rotate-axis="0"][data-rotate-delta="1"]').click({ force: true });
+  await page.waitForTimeout(350);
+  const rotateStatus = await page.locator("#statusLine").innerText();
+  const rotated = await exportPayload(page);
+
+  await click(page, "#btnSample");
+  await page.waitForTimeout(450);
+  const beforeMove = await exportPayload(page);
+  await page.locator(".atlas-cell").first().click({ force: true });
+  await page.locator(".block-row", { hasText: "Block B" }).click({ force: true });
+  await click(page, "#btnMoveBlockToCell");
+  await page.waitForTimeout(450);
+  const moveStatus = await page.locator("#statusLine").innerText();
+  const moved = await exportPayload(page);
+
+  await click(page, "#btnResetCamera");
   await page.waitForTimeout(250);
+  const resetStatus = await page.locator("#statusLine").innerText();
+
+  await click(page, "#btnSample");
+  await page.waitForTimeout(450);
+  await page.locator(".atlas-cell").first().click({ force: true });
+  await page.fill("#inputSizeW", "1");
+  await page.fill("#inputSizeH", "1");
+  await page.fill("#inputSizeD", "1");
+  await click(page, "#btnAttachBlock");
+  await page.waitForTimeout(450);
+  const attached = await exportPayload(page);
+
+  const disconnected = baseBlockPayload();
+  disconnected.Blocks.push({
+    Id: "B",
+    Size: [4, 4, 4],
+    Position: [12, 0, 0],
+    RotationDeg: [0, 0, 0],
+    RotationOrder: "XYZ",
+    Color: "#b875ff",
+    Locked: false,
+    Visible: true
+  });
+  await importPayload(page, disconnected);
+  await click(page, "#btnGenerate");
+  await page.waitForTimeout(250);
+  const disconnectedStats = await page.evaluate(() => ({
+    mapChip: document.querySelector("#mapChip").textContent,
+    issueText: document.querySelector("#issueList").textContent,
+    status: document.querySelector("#statusLine").textContent
+  }));
+
+  await importPayload(page, baseBlockPayload([
+    {
+      Id: 0,
+      Dir: "L",
+      Path: ["A:front:2_2", "A:front:1_2"],
+      Color: "#19d8ff"
+    }
+  ]));
   const directionMismatchStatus = await page.locator("#statusLine").innerText();
-  await page.evaluate(() => {
-    const bad = {
-      SchemaVersion: 3,
-      BoardType: "cuboid",
-      BoxSize: { width: 6, height: 6, depth: 6 },
-      Arrows: [
-        {
-          Id: 0,
-          Dir: "R",
-          Path: [
-            "front:1_5",
-            "front:1_4",
-            "front:1_3",
-            "front:2_3",
-            "front:2_4",
-            "front:2_5",
-            "right:2_0",
-            "right:1_0"
-          ],
-          Color: "#178f83"
-        }
-      ]
-    };
-    document.querySelector("#jsonBox").value = JSON.stringify(bad);
-  });
-  await page.click("#btnImport");
-  await page.waitForTimeout(250);
+
+  await importPayload(page, baseBlockPayload([
+    {
+      Id: 0,
+      Dir: "R",
+      Path: [
+        "A:front:2_1",
+        "A:front:2_0",
+        "A:left:2_3",
+        "A:left:2_2",
+        "A:left:2_1",
+        "A:left:2_0",
+        "A:back:2_3",
+        "A:back:2_2",
+        "A:back:2_1",
+        "A:back:2_0",
+        "A:right:2_3",
+        "A:right:2_2",
+        "A:right:2_1",
+        "A:right:2_0"
+      ],
+      Color: "#b875ff"
+    }
+  ]));
   const selfFacingStatus = await page.locator("#statusLine").innerText();
-  const stats = await page.evaluate(() => ({
-    title: document.querySelector("h1").textContent,
-    arrows: document.querySelector("#statArrows").textContent,
-    cells: document.querySelector("#statCells").textContent,
-    ready: document.querySelector("#statReady").textContent,
-    status: document.querySelector("#statusLine").textContent,
-    solve: document.querySelector("#solveChip").textContent,
+
+  const after = await canvasStats(page);
+  const finalStats = await page.evaluate(() => ({
     overflowX: document.documentElement.scrollWidth > document.documentElement.clientWidth + 2,
     overflow: {
       scrollWidth: document.documentElement.scrollWidth,
@@ -116,7 +234,7 @@ async function runViewport(browser, viewport, screenshotPath) {
           return {
             tag: el.tagName,
             id: el.id,
-            cls: el.className,
+            cls: String(el.className),
             left: Math.round(rect.left),
             right: Math.round(rect.right),
             width: Math.round(rect.width)
@@ -127,18 +245,67 @@ async function runViewport(browser, viewport, screenshotPath) {
         .slice(0, 8)
     }
   }));
-  expect(after.varied > 0, `canvas did not render nonblank content in ${viewport.width}x${viewport.height}`);
-  expect(cuboidStats.boardType === "cuboid", "sample board type should be cuboid");
-  expect(cuboidStats.boxSize?.width === 7 && cuboidStats.boxSize?.height === 5 && cuboidStats.boxSize?.depth === 4, "sample box size mismatch");
-  expect(cuboidStats.chip.includes("7 × 5 × 4"), "box size chip mismatch");
-  expect(cuboidStats.readout.includes("front/back 5×7"), "box dims readout mismatch");
+
+  expect(messages.length === 0, `browser warnings/errors: ${messages.join(" | ")}`);
+  expect(before.varied > 0 && after.varied > 0, `canvas did not render nonblank content in ${viewport.width}x${viewport.height}`);
+  expect(initialStats.title === "3D 箭头组合体编辑器", `title mismatch: ${initialStats.title}`);
+  expect(initial.SchemaVersion === 4, "schema should be version 4");
+  expect(initial.BoardType === "compound_blocks", "board type should be compound_blocks");
+  expect(initial.Blocks.length === 2, "default editor should start with 2 blocks");
+  expect(initial.MapValidation.CanGenerate === true, "default compound map should be valid");
+  expect(initialStats.statBlocks === "2", "block stat mismatch");
+  expect(initialStats.statSurface > 0, "surface stat should be positive");
+  expect(initialStats.mapChip === "可生成", "default map chip should be valid");
+  expect(initialStats.hasMoveButton, "move-to-surface button should exist");
+  expect(initialStats.hasResetButton, "reset-camera button should exist");
+  expect(initialStats.hasExactPanel, "exact coordinate panel should exist");
+  expect(initialStats.exportedFns.includes("buildSurface"), "runtime hook should expose buildSurface");
+  expect(initialStats.exportedFns.includes("moveSelectedBlockToCell"), "runtime hook should expose moveSelectedBlockToCell");
+  expect(initialStats.exportedFns.includes("resetCameraView"), "runtime hook should expose resetCameraView");
+  expect(generatedStats.arrows > 0, `generation did not place arrows: ${generatedStats.status}`);
+  expect(generated.Arrows.length === generatedStats.arrows, "exported arrow count should match UI");
+  expect(generated.MapValidation.CanGenerate === true, "generated map should stay structurally valid");
+  expect(generatedStats.solveChip === "有解", `generated puzzle should be solvable: ${generatedStats.solveChip}`);
+  expect(sample.Blocks.length === 3, "sample should load 3 blocks");
+  expect(sample.MapValidation.CanGenerate === true, "sample compound map should be valid");
+  expect(nudgeStatus.includes("已移动"), `nudge status mismatch: ${nudgeStatus}`);
+  expect(nudged.Blocks.find((block) => block.Id === "A").Position[0] === sampleAPosition[0] + 1, "X+ nudge should move selected block by one cell");
+  expect(rotateStatus.includes("已旋转"), `rotate status mismatch: ${rotateStatus}`);
+  expect(rotated.Blocks.find((block) => block.Id === "A").RotationDeg[0] === 15, "X+ rotate should rotate selected block by snap angle");
+  expect(moveStatus.includes("已将 Block B 移动到"), `move-to-surface status mismatch: ${moveStatus}`);
+  expect(moved.Blocks.find((block) => block.Id === "B").Position.join(",") !== beforeMove.Blocks.find((block) => block.Id === "B").Position.join(","), "move-to-surface should change Block B position");
+  expect(resetStatus === "视角已复位", `reset camera status mismatch: ${resetStatus}`);
+  expect(attached.Blocks.length === 4, "attach action should add one block");
+  expect(disconnectedStats.mapChip === "需修正", "disconnected map should be marked invalid");
+  expect(disconnectedStats.issueText.includes("地图未连通"), `disconnected issue missing: ${disconnectedStats.issueText}`);
+  expect(disconnectedStats.status.includes("地图结构存在问题"), `invalid generate status mismatch: ${disconnectedStats.status}`);
   expect(directionMismatchStatus.includes("箭头方向必须背向头部身体延展方向"), `direction mismatch check failed: ${directionMismatchStatus}`);
   expect(selfFacingStatus.includes("头部朝向不能正对自己的跨面身体"), `self-facing cross-face check failed: ${selfFacingStatus}`);
-  expect(stats.title === "箭头 3D 长方体编辑器", `title mismatch: ${stats.title}`);
-  expect(!stats.overflowX, `horizontal overflow detected: ${JSON.stringify(stats.overflow)}`);
+  expect(!initialStats.overflowX && !finalStats.overflowX, `horizontal overflow detected: ${JSON.stringify(finalStats.overflow)}`);
+
   await page.screenshot({ path: screenshotPath, fullPage: true });
   await page.close();
-  return { viewport, before, after, cuboidStats, directionMismatchStatus, selfFacingStatus, stats, messages };
+  return {
+    viewport,
+    before,
+    after,
+    initial: {
+      blocks: initial.Blocks.length,
+      surface: initial.MapValidation.SurfaceCellCount
+    },
+    generated: {
+      arrows: generatedStats.arrows,
+      solve: generatedStats.solveChip
+    },
+    sampleBlocks: sample.Blocks.length,
+    nudgedA: nudged.Blocks.find((block) => block.Id === "A").Position,
+    movedB: moved.Blocks.find((block) => block.Id === "B").Position,
+    attachedBlocks: attached.Blocks.length,
+    resetStatus,
+    disconnectedStats,
+    directionMismatchStatus,
+    selfFacingStatus
+  };
 }
 
 const browser = await chromium.launch({
@@ -147,8 +314,8 @@ const browser = await chromium.launch({
 });
 
 try {
-  const desktop = await runViewport(browser, { width: 1440, height: 980 }, "/private/tmp/arrow_cube_editor_desktop.png");
-  const mobile = await runViewport(browser, { width: 390, height: 844 }, "/private/tmp/arrow_cube_editor_mobile.png");
+  const desktop = await runViewport(browser, { width: 1440, height: 980 }, "/private/tmp/compound_arrow_editor_desktop.png");
+  const mobile = await runViewport(browser, { width: 390, height: 844 }, "/private/tmp/compound_arrow_editor_mobile.png");
   console.log(JSON.stringify({ desktop, mobile }, null, 2));
 } finally {
   await browser.close();

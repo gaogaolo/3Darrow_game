@@ -1,243 +1,221 @@
-# Arrow Cube Editor Memory
+# 3D Arrow Compound Editor Memory
 
-Last updated: 2026-07-31
+Last updated: 2026-08-04
 
 ## What This Is
 
-This is a single-file HTML editor for a 3D arrow puzzle on a cuboid surface.
-It is the current source of truth for the editor behavior in `arrow-cube-editor/index.html`.
+This is the current single-file HTML editor for a compound 3D arrow puzzle map built from multiple cubes/cuboids.
 
-The old face-size compatibility logic has been removed.
-Current level schema is:
+Source of truth:
+
+- `editor/index.html`
+- `github-pages/index.html` is kept as a deployable copy.
+
+Current level schema:
 
 ```json
 {
-  "SchemaVersion": 3,
-  "BoardType": "cuboid",
-  "BoxSize": { "width": 7, "height": 5, "depth": 4 },
-  "EditorConfig": { ... },
-  "BlockedCells": [ ... ],
-  "Arrows": [ ... ]
+  "SchemaVersion": 4,
+  "BoardType": "compound_blocks",
+  "GridUnit": 1,
+  "Blocks": [],
+  "SurfacePolicy": {},
+  "EditorConfig": {},
+  "BlockedCells": [],
+  "Arrows": []
 }
 ```
 
-## Core Model
+The old single-cuboid `SchemaVersion: 3` / `BoardType: "cuboid"` logic is no longer the active editor logic.
 
-- The board is a cuboid surface with 6 faces: `top`, `left`, `front`, `right`, `back`, `bottom`.
-- User-facing size is `BoxSize.width / height / depth`.
-- Derived face sizes are:
-  - `front/back = height x width`
-  - `left/right = height x depth`
-  - `top/bottom = depth x width`
-- Paths use tokens like `front:3_1`.
-- Internal cell identity uses `face:r,c`.
-- Each arrow has:
-  - `id`
-  - `dir` in `U/D/L/R`
-  - `path` array of surface cells
-  - `color`
-  - `ray` for head-face removal checks
+## Core Map Model
 
-## Important Rules
+- The map is made from multiple unit-grid Blocks.
+- Each Block is a cube or cuboid with:
+  - `Id`
+  - `Size: [W, H, D]`
+  - `Position: [x, y, z]`
+  - `RotationDeg: [x, y, z]`
+  - `RotationOrder`
+  - `Color`
+  - `Visible`
+- Blocks can be freely added in space through "自由添加".
+- Blocks can be attached to a selected surface cell through "贴面添加".
+- A selected Block can be moved onto a selected surface cell through "移动到选中表面".
+- Rotation uses angle snapping, default `15°`, with `15/30/45/90` quick options.
+- Size is configured directly in the selected Block panel.
+- Position editing is simplified through target-surface placement and `X/Y/Z` move buttons using `1/2/4` grid-step options.
+- Rotation editing is simplified through `X/Y/Z` rotation buttons using the current angle snap.
+- Raw position and rotation inputs remain available under a collapsed "精确坐标与角度" panel.
 
-### Path continuity
+## Surface Generation
 
-- A path must be continuous across the surface.
-- Adjacent path cells may stay on the same face or cross to a neighboring face.
-- Cross-face steps must happen only through shared edge cells.
-- The arrow body may span multiple faces.
+The playable map is not the raw Block volume. It is the final external surface after Block overlap/contact removal.
 
-### Head direction rule
+Generation steps:
+
+1. Generate unit cells for the 6 faces of every visible Block.
+2. Transform each cell center, corners, normal, and tangent axes into world space.
+3. Remove a surface cell when its center enters another Block or lies on another Block's face-contact interior.
+4. Do not generate cut/interior faces for overlap areas.
+5. Keep edge/corner contact surfaces unless the cell-center coverage rule removes them.
+6. Build a Surface Graph from remaining external cells.
+
+Coverage policy:
+
+```json
+{
+  "CoverageRule": "cell_center_inside_other_block",
+  "RemoveFaceContact": true,
+  "GenerateCutInteriorFaces": false,
+  "RequireConnected": true,
+  "RejectAmbiguousEdges": true
+}
+```
+
+## Surface Graph
+
+- Each surface cell has four directed edges: `U/D/L/R`.
+- Edges are keyed by quantized world-space endpoints.
+- Exactly two cells sharing an edge create a graph connection.
+- A connection is:
+  - `coplanar` when normals and plane distance match.
+  - `edge_fold` when the cells share an edge across different planes.
+- More than two cells sharing the same edge create an `ambiguous_edge` issue.
+- The final external surface must be one connected component to generate arrows.
+- Disconnected maps can be edited/imported temporarily, but generation is blocked.
+
+## Arrow Rules
+
+- Arrow paths are arrays of surface cell ids such as `A:front:2_3`.
+- A path must be continuous on the Surface Graph.
+- Path cells cannot repeat, enter blocked cells, or overlap other arrows.
+- Cross-plane/cross-Block motion is legal only through graph-connected shared edges.
+- The arrow body can cross multiple faces/Blocks.
+
+### Head Direction
 
 - The arrow head direction is inferred from the first body segment.
-- If the first two segments extend in a direction, the head must face the opposite direction.
-- If the first three cells exist, the first two segments must extend in the same direction.
-- Example: if the body extends upward, the arrow cannot face left; it must face down.
+- If the path has three or more cells, the first and second body steps must continue in the same direction.
+- The arrow head must face opposite to that inferred body-extension direction.
+- Example: body extends upward from the head, arrow direction must be `D`, not `L`.
 
-### Self-blocking rule
+### Removal/Blocking
 
-- The head only checks blockers on its current face ray.
-- Body cells on other faces do not block that ray unless they lie on the same forward surface ray path.
-- The forward surface ray is used to reject cases where the arrow would face into its own cross-face body.
-
-## Key Helpers
-
-### Box size and derived dimensions
-
-- `cloneBoxSize`
-- `normalizeBoxSize`
-- `boxSizeToSurfaceDims`
-- `setBoxSize`
-- `boxSizeSummary`
-- `boxDerivedFacesSummary`
-- `boxMeasures`
-
-### Surface topology
-
-- `getCrossFaceStep`
-- `getSurfaceStep`
-- `getSurfaceNeighbors`
-- `areSurfaceNeighbors`
-- `getLocalRayOnFace`
-- `getSurfaceForwardRay`
-
-### Path validation
-
-- `parsePathToken`
-- `parseBlockToken`
-- `isInBounds`
-- `getDirectionBetween`
-- `inferHeadDirectionFromPath`
-- `validateHeadDirection`
-- `validatePathGeometry`
-- `makeArrow`
-- `validateAndStore`
-
-### Solving and removal
-
-- `canRemoveArrow`
-- `quickSolveCheck`
-- `currentlyRemovableIds`
-- `getRayBlockers`
-- `removeArrowById`
-- `removeOneBatch`
-
-### Generation
-
-- `parseWeights`
-- `sampleWeighted`
-- `generateRandomPath`
-- `addRandomArrow`
-- `fillFullCubeMap`
+- Movement checks blockers only along the head's current coplanar forward ray.
+- Bodies on other faces do not block the head's current-face movement ray.
+- A second forward-surface ray is used only to reject invalid self-facing shapes where the head points into its own cross-face body.
 
 ## Editor Modes
 
-- `play`: click arrows to select or remove.
-- `draw`: click cells to build a path manually.
-- `block`: toggle blocked cells.
+- `structure`: select cells/Blocks and add/edit/delete Blocks.
+- `play`: click arrows to remove them when their current-plane forward ray is clear.
+- `draw`: manually click cells to draw one arrow path.
+- `block`: toggle blocked surface cells.
 
-Manual drawing rules:
+Manual drawing:
 
-- Path cannot pass through occupied cells or blocked cells.
-- Path must stay continuous.
-- The last two cells can be undone by clicking back to the previous cell.
-- On finish, the head direction is auto-derived when possible.
+- Clicking back to the previous cell undoes one step.
+- Finishing a path auto-infers the head direction when possible.
+- The new arrow must keep the puzzle solvable.
+
+## Generation
+
+- `fillGeneratedArrows()` clears existing arrows and fills toward `inputFillRate`.
+- `addRandomArrow()` samples starts, lengths, bends, and cross-plane opportunities.
+- Length and bend distributions use the same editable weight-string format as the earlier editor.
+- `inputCrossRate` biases path candidates toward `edge_fold` steps.
+- Every placed arrow is validated and must preserve a quick solvability check.
 
 ## Import / Export
 
-### Export
+Export writes:
 
-- Export always writes `SchemaVersion: 3`.
-- Export always writes `BoardType: "cuboid"`.
-- Export includes `BoxSize`, `EditorConfig`, `BlockedCells`, and `Arrows`.
-- Download filename is `cuboid_arrow_level_XXXX.json`.
+- `SchemaVersion: 4`
+- `BoardType: "compound_blocks"`
+- `GridUnit`
+- `Snap`
+- `Blocks`
+- `SurfacePolicy`
+- `EditorConfig`
+- `MapValidation`
+- `BlockedCells`
+- `Arrows`
 
-### Import
+Import requires:
 
-- Import requires `SchemaVersion === 3`.
-- Import requires `BoardType === "cuboid"`.
-- Import requires `BoxSize`.
-- Import validates:
-  - box size range
-  - blocked cells in bounds
-  - arrow paths in bounds
-  - no collisions
-  - continuity
-  - head direction rule
-  - forward-ray self-blocking rule
+- `SchemaVersion === 4`
+- `BoardType === "compound_blocks"`
+- non-empty `Blocks`
+
+Import validates arrows against the generated Surface Graph. Invalid imported structure can be loaded for editing, but invalid arrows are rejected.
 
 ## UI Structure
 
-- Top bar shows:
-  - title
-  - counts
-  - actions
-- Left panel contains:
-  - cuboid size controls
-  - generation weights
-  - 3D generation parameters
-  - mode switch
-  - selected arrow tools
-- Middle panel shows the unfolded net.
-- Right panel shows the 3D cuboid preview / play view.
-- Bottom dock is JSON import/export.
+- Top bar: title, status, counts, generate/validate/export/clear actions.
+- Left panel: Block list, Block transform/size controls, mode switch, generation parameters, issues.
+- Middle panel: Surface Atlas grouped by final world-space planes.
+- Right panel: Orbit-controlled 3D compound preview/play surface with a "复位视角" action.
+- Bottom dock: JSON import/export/download/sample.
 
 Important UI ids:
 
-- size inputs: `inputBoxWidth`, `inputBoxHeight`, `inputBoxDepth`
-- apply size: `btnApplyBoxSize`
-- size readout: `boxDimsReadout`
-- 3D size chip: `boxSizeChip`
-- JSON box: `jsonBox`
-- import/export/sample buttons: `btnImport`, `btnDownload`, `btnSample`
+- `btnAddBlock`, `btnAttachBlock`, `btnDuplicateBlock`, `btnDeleteBlock`
+- `inputSizeW`, `inputSizeH`, `inputSizeD`
+- `inputPosX`, `inputPosY`, `inputPosZ`
+- `inputRotX`, `inputRotY`, `inputRotZ`
+- `inputSnap`
+- `inputMoveStep`
+- `btnMoveBlockToCell`
+- `btnResetCamera`
+- `atlasList`, `threeViewport`, `jsonBox`
+- `btnGenerate`, `btnValidate`, `btnExport`, `btnImport`, `btnSample`
 
 ## 3D Rendering
 
 - Uses local `three.module.js` and `OrbitControls.js`.
-- Camera is orbit-controlled.
-- `ResizeObserver` keeps the canvas sized to its host.
-- Mouse click raycasts the 3D cells.
-- Each cell is a plane aligned to the face.
-- Arrow body connectors are cylinders between path cells.
-- Arrow head is a triangle shape placed on the head cell.
-- Optional ring marks removable arrows.
-- `lineStyle` swaps arrow colors to monochrome.
-
-## Generation Logic
-
-- `fillFullCubeMap()` clears arrows, then fills toward a target occupancy based on fill rate.
-- `addRandomArrow()` tries candidate starts and lengths until a valid arrow is found.
-- Candidate length and bends are sampled from weighted distributions.
-- Paths may cross faces, but are still limited by:
-  - max bends
-  - max cross-face count
-  - occupancy / blocked cells
-
-## State
-
-`state` currently holds:
-
-- `level`
-- `boxSize`
-- `faceDims`
-- `arrows`
-- `gridMap`
-- `blockedCells`
-- `selectedArrowId`
-- `mode`
-- `drawPath`
-- `lineStyle`
-- `lastSolve`
+- The camera supports mouse drag/orbit, pan, and zoom.
+- `ResizeObserver` sizes the canvas to the viewport host.
+- `renderFrame()` immediately commits a frame after resize and scene rebuild, so the 3D panel does not appear blank.
+- `resetCameraView()` frames the current visible Blocks by their rotated world bounds.
+- Surface cells are rendered as selectable planes.
+- Block shells are transparent cuboids with edge outlines.
+- Arrow bodies are cylinders and arrow heads are triangle meshes.
+- Ambiguous graph edges render as issue lines.
 
 ## Runtime Hooks
 
-For debugging and automation, the page exposes:
+The page exposes:
 
 ```js
-window.cubeArrowEditor = {
+window.compoundArrowEditor = {
   state,
-  getSurfaceStep,
-  getSurfaceNeighbors,
-  getLocalRayOnFace,
+  buildSurface,
+  findDirectionBetweenCells,
+  getPlanarRay,
   quickSolveCheck,
+  moveSelectedBlockToCell,
+  resetCameraView,
   exportLevel,
   importLevel
 }
 ```
 
-## Smoke Test
+## Verified Smoke Coverage
 
-`smoke-test.mjs` verifies:
+`editor/smoke-test.mjs` currently verifies:
 
-- the canvas renders non-blank content
-- sample import succeeds
-- the exported sample is `cuboid`
-- wrong head direction is rejected
-- self-facing cross-face body is rejected
-- the layout does not overflow horizontally
-
-## Current Operational Note
-
-This editor runs best through a local HTTP server.
-Opening the file directly with `file://` may fail because the page uses ES modules and local browser security rules are stricter there.
-
+- Desktop and mobile rendering.
+- Canvas is nonblank.
+- No horizontal overflow.
+- Default `compound_blocks` export is valid.
+- Random generation creates a solvable puzzle.
+- Sample loads 3 connected Blocks.
+- Attach action adds a Block.
+- X/Y/Z nudge controls move the selected Block by the chosen grid step.
+- X/Y/Z rotation controls rotate the selected Block by the current snap angle.
+- Move-to-surface changes the selected Block's placement from a selected target surface cell.
+- Reset camera reports `视角已复位`.
+- Disconnected maps are marked invalid and cannot generate.
+- Direction mismatch arrows are rejected.
+- Self-facing cross-face arrows are rejected.
