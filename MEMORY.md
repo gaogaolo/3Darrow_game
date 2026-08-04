@@ -177,7 +177,8 @@ Important UI ids:
 - The camera supports mouse drag/orbit, pan, and zoom.
 - `ResizeObserver` sizes the canvas to the viewport host.
 - `renderFrame()` immediately commits a frame after resize and scene rebuild, so the 3D panel does not appear blank.
-- `resetCameraView()` frames the current visible Blocks by their rotated world bounds.
+- `resetCameraView()` frames the current final visible surface shape, using surface-cell corner points and camera FOV projection so wide/tall/rotated compound shapes fit fully in the 3D viewport.
+- The latest reset frame is stored in `state.lastCameraFrame` with center, distance, radius, point count, and projected coverage.
 - Surface cells are rendered as selectable planes.
 - Block shells are transparent cuboids with edge outlines.
 - Arrow bodies are cylinders and arrow heads are triangle meshes.
@@ -216,6 +217,7 @@ window.compoundArrowEditor = {
 - X/Y/Z rotation controls rotate the selected Block by the current snap angle.
 - Move-to-surface changes the selected Block's placement from a selected target surface cell.
 - Reset camera reports `视角已复位`.
+- Reset camera is verified against a long 5-Block compound shape and must keep projected X/Y coverage below the viewport boundary.
 - Disconnected maps are marked invalid and cannot generate.
 - Direction mismatch arrows are rejected.
 - Self-facing cross-face arrows are rejected.

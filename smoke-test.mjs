@@ -93,6 +93,22 @@ function baseBlockPayload(arrows = []) {
   };
 }
 
+function longCompoundPayload() {
+  const payload = baseBlockPayload();
+  const colors = ["#19d8ff", "#b875ff", "#a8ef32", "#ff8f5f", "#77a8ff"];
+  payload.Blocks = Array.from({ length: 5 }, (_, index) => ({
+    Id: String.fromCharCode(65 + index),
+    Size: [4, 4, 4],
+    Position: [index * 4, 0, 0],
+    RotationDeg: [0, 0, 0],
+    RotationOrder: "XYZ",
+    Color: colors[index],
+    Locked: false,
+    Visible: true
+  }));
+  return payload;
+}
+
 async function runViewport(browser, viewport, screenshotPath) {
   const page = await browser.newPage({ viewport, deviceScaleFactor: 1 });
   const messages = [];
@@ -156,6 +172,10 @@ async function runViewport(browser, viewport, screenshotPath) {
   await click(page, "#btnResetCamera");
   await page.waitForTimeout(250);
   const resetStatus = await page.locator("#statusLine").innerText();
+
+  await importPayload(page, longCompoundPayload());
+  const longFrame = await page.evaluate(() => window.compoundArrowEditor.resetCameraView(false));
+  await page.waitForTimeout(250);
 
   await click(page, "#btnSample");
   await page.waitForTimeout(450);
@@ -275,6 +295,9 @@ async function runViewport(browser, viewport, screenshotPath) {
   expect(moveStatus.includes("已将 Block B 移动到"), `move-to-surface status mismatch: ${moveStatus}`);
   expect(moved.Blocks.find((block) => block.Id === "B").Position.join(",") !== beforeMove.Blocks.find((block) => block.Id === "B").Position.join(","), "move-to-surface should change Block B position");
   expect(resetStatus === "视角已复位", `reset camera status mismatch: ${resetStatus}`);
+  expect(longFrame?.pointCount > 0, "reset camera should return frame info for current shape");
+  expect(Math.abs(longFrame.center[0] - 8) < 0.01, `long compound should be centered by full shape bounds: ${JSON.stringify(longFrame)}`);
+  expect(longFrame.coverage.maxProjectedX < 0.92 && longFrame.coverage.maxProjectedY < 0.92, `long compound should fit in reset view: ${JSON.stringify(longFrame)}`);
   expect(attached.Blocks.length === 4, "attach action should add one block");
   expect(disconnectedStats.mapChip === "需修正", "disconnected map should be marked invalid");
   expect(disconnectedStats.issueText.includes("地图未连通"), `disconnected issue missing: ${disconnectedStats.issueText}`);
@@ -302,6 +325,7 @@ async function runViewport(browser, viewport, screenshotPath) {
     movedB: moved.Blocks.find((block) => block.Id === "B").Position,
     attachedBlocks: attached.Blocks.length,
     resetStatus,
+    longFrame,
     disconnectedStats,
     directionMismatchStatus,
     selfFacingStatus
