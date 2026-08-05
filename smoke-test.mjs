@@ -51,6 +51,29 @@ async function importPayload(page, payload) {
   await page.waitForTimeout(250);
 }
 
+async function viewportHeightStability(page) {
+  return page.evaluate(async () => {
+    const host = document.querySelector("#viewportHost");
+    const canvas = document.querySelector("#threeViewport");
+    const samples = [];
+    for (let i = 0; i < 7; i += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 350));
+      samples.push({
+        hostHeight: Math.round(host.getBoundingClientRect().height),
+        canvasHeight: canvas.height,
+        clientHeight: canvas.clientHeight
+      });
+    }
+    const hostHeights = samples.map((item) => item.hostHeight);
+    const canvasHeights = samples.map((item) => item.canvasHeight);
+    return {
+      samples,
+      hostDelta: Math.max(...hostHeights) - Math.min(...hostHeights),
+      canvasDelta: Math.max(...canvasHeights) - Math.min(...canvasHeights)
+    };
+  });
+}
+
 function baseBlockPayload(arrows = []) {
   return {
     SchemaVersion: 4,
@@ -134,6 +157,7 @@ async function runViewport(browser, viewport, screenshotPath) {
     hasExactPanel: Boolean(document.querySelector(".exact-panel")),
     exportedFns: Object.keys(window.compoundArrowEditor || {})
   }));
+  const initialViewportStability = await viewportHeightStability(page);
 
   await click(page, "#btnGenerate");
   await page.waitForTimeout(1400);
@@ -282,6 +306,7 @@ async function runViewport(browser, viewport, screenshotPath) {
   expect(initialStats.exportedFns.includes("buildSurface"), "runtime hook should expose buildSurface");
   expect(initialStats.exportedFns.includes("moveSelectedBlockToCell"), "runtime hook should expose moveSelectedBlockToCell");
   expect(initialStats.exportedFns.includes("resetCameraView"), "runtime hook should expose resetCameraView");
+  expect(initialViewportStability.hostDelta <= 3 && initialViewportStability.canvasDelta <= 6, `3D viewport height should stay stable after load: ${JSON.stringify(initialViewportStability)}`);
   expect(generatedStats.arrows > 0, `generation did not place arrows: ${generatedStats.status}`);
   expect(generated.Arrows.length === generatedStats.arrows, "exported arrow count should match UI");
   expect(generated.MapValidation.CanGenerate === true, "generated map should stay structurally valid");
@@ -316,6 +341,7 @@ async function runViewport(browser, viewport, screenshotPath) {
       blocks: initial.Blocks.length,
       surface: initial.MapValidation.SurfaceCellCount
     },
+    initialViewportStability,
     generated: {
       arrows: generatedStats.arrows,
       solve: generatedStats.solveChip

@@ -612,7 +612,9 @@
 
     .viewport {
       position: relative;
+      height: clamp(520px, 68vh, 760px);
       min-height: 520px;
+      overflow: hidden;
       background: radial-gradient(circle at 50% 30%, rgba(25, 216, 255, 0.08), transparent 42%), #070d14;
     }
 
@@ -731,6 +733,7 @@
       }
 
       .viewport {
+        height: 430px;
         min-height: 430px;
       }
 

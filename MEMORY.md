@@ -1,6 +1,6 @@
 # 3D Arrow Compound Editor Memory
 
-Last updated: 2026-08-04
+Last updated: 2026-08-05
 
 ## What This Is
 
@@ -177,6 +177,7 @@ Important UI ids:
 - The camera supports mouse drag/orbit, pan, and zoom.
 - `ResizeObserver` sizes the canvas to the viewport host.
 - `renderFrame()` immediately commits a frame after resize and scene rebuild, so the 3D panel does not appear blank.
+- The 3D viewport must keep a stable explicit height. Do not let `#threeViewport` with `height: 100%` determine parent height, or `ResizeObserver -> renderer.setSize()` can create a feedback loop that makes the viewport keep growing and look like the camera is auto-zooming out.
 - `resetCameraView()` frames the current final visible surface shape, using surface-cell corner points and camera FOV projection so wide/tall/rotated compound shapes fit fully in the 3D viewport.
 - The latest reset frame is stored in `state.lastCameraFrame` with center, distance, radius, point count, and projected coverage.
 - Surface cells are rendered as selectable planes.
@@ -208,6 +209,7 @@ window.compoundArrowEditor = {
 
 - Desktop and mobile rendering.
 - Canvas is nonblank.
+- 3D viewport height remains stable after load, preventing the auto-shrinking/auto-zoom-out visual bug.
 - No horizontal overflow.
 - Default `compound_blocks` export is valid.
 - Random generation creates a solvable puzzle.
