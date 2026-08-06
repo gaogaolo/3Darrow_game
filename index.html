@@ -1322,6 +1322,15 @@
         : "edge_fold";
     }
 
+    function seamKindBetween(a, b) {
+      return a.blockId === b.blockId ? "same_block" : "block_seam";
+    }
+
+    function isForwardAllowedStep(step) {
+      if (typeof step.forwardAllowed === "boolean") return step.forwardAllowed;
+      return step.relation === "coplanar" || step.seamKind === "block_seam";
+    }
+
     function buildSurface() {
       const rawCells = state.blocks.filter((block) => block.visible).flatMap(generateBlockSurfaceCells);
       const visible = [];
@@ -1355,13 +1364,17 @@
         if (entries.length === 2) {
           const [a, b] = entries;
           const relation = relationBetween(a.cell, b.cell);
+          const seamKind = seamKindBetween(a.cell, b.cell);
+          const forwardAllowed = relation === "coplanar" || seamKind === "block_seam";
           graph.set(directedKey(a.cell.id, a.dir), {
             from: a.cell.id,
             fromDir: a.dir,
             to: b.cell.id,
             toDir: OPPOSITE_DIR[b.dir],
             continueDir: OPPOSITE_DIR[b.dir],
-            relation
+            relation,
+            seamKind,
+            forwardAllowed
           });
           graph.set(directedKey(b.cell.id, b.dir), {
             from: b.cell.id,
@@ -1369,7 +1382,9 @@
             to: a.cell.id,
             toDir: OPPOSITE_DIR[a.dir],
             continueDir: OPPOSITE_DIR[a.dir],
-            relation
+            relation,
+            seamKind,
+            forwardAllowed
           });
         } else if (entries.length > 2) {
           for (const entry of entries) {
@@ -1542,7 +1557,7 @@
         if (!cells.has(step.to)) {
           return { cells: ray, steps, stopReason: "issue", cycle: false };
         }
-        if (step.relation === "edge_fold") {
+        if (!isForwardAllowedStep(step)) {
           return { cells: ray, steps, stopReason: "fold_boundary", cycle: false };
         }
         steps.push(step);

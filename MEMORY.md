@@ -82,6 +82,10 @@ Coverage policy:
   - `coplanar` when normals and plane distance match.
   - `edge_fold` when the cells share an edge across different planes.
 - Surface graph steps carry `toDir` / `continueDir`, the target-cell local direction to use after crossing that shared edge.
+- Surface graph steps also carry `seamKind` / `forwardAllowed`:
+  - `same_block`: the shared edge belongs to one Block's own outer surfaces.
+  - `block_seam`: the shared edge is formed by two different Blocks.
+  - `forwardAllowed` is true for `coplanar` and for `edge_fold + block_seam`, false for `edge_fold + same_block`.
 - More than two cells sharing the same edge create an `ambiguous_edge` issue.
 - The final external surface must be one connected component to generate arrows.
 - Disconnected maps can be edited/imported temporarily, but generation is blocked.
@@ -95,7 +99,7 @@ Coverage policy:
 - The arrow body can cross multiple faces/Blocks.
 - Arrow logic deliberately separates three path types:
   - `BodyPath`: arrow body path; can use both `coplanar` seams and `edge_fold` folded edges.
-  - `ForwardRay`: gameplay removal ray; follows only `coplanar` seams on the current continuous logical face.
+  - `ForwardRay`: gameplay removal ray; follows `forwardAllowed` seams, including coplanar seams and cross-Block 90-degree fold seams.
   - `SurfaceTrace`: self-facing validation trace; can use both `coplanar` and `edge_fold`.
 
 ### Head Direction
@@ -109,7 +113,9 @@ Coverage policy:
 
 - Movement checks blockers along `ForwardRay`.
 - `ForwardRay` continues across coplanar Block seams, so arrows on the same continuous logical face can block removal even when they belong to another Block.
-- `ForwardRay` stops at a 90° `edge_fold`; folded-face bodies do not block current-face movement.
+- `ForwardRay` continues across a 90° `edge_fold` only when that fold is a `block_seam`; folded-face bodies on that seam can block removal.
+- `ForwardRay` stops at a same-Block 90° `edge_fold`; ordinary cuboid outer folds do not block current-face movement.
+- If `ForwardRay` cycles through forward-allowed seams, the arrow is not removable and the UI reports `前进路径存在循环`.
 - A missing Surface Cell, hole, uncovered gap, or geometry boundary stops the ray and is treated as an open boundary.
 - `SurfaceTrace` is used only to reject invalid self-facing shapes where the head points into its own cross-face body.
 - Block geometry boundaries and blocked cells do not count as movement blockers.
@@ -235,5 +241,7 @@ window.compoundArrowEditor = {
 - Direction mismatch arrows are rejected.
 - Self-facing cross-face arrows are rejected.
 - Coplanar Block seams remain in `ForwardRay` and can block removal.
-- 90° `edge_fold` targets are excluded from `ForwardRay` but remain reachable by `SurfaceTrace`.
+- Cross-Block 90° `edge_fold` seams remain in `ForwardRay` and can block removal.
+- Same-Block 90° `edge_fold` targets are excluded from `ForwardRay` but remain reachable by `SurfaceTrace`.
+- Forward-allowed cycles are detected and marked as `cycle`.
 - Missing-cell holes stop `ForwardRay`; the ray does not jump to later cells.
