@@ -76,41 +76,15 @@ async function viewportHeightStability(page) {
 
 function baseBlockPayload(arrows = []) {
   return {
-    SchemaVersion: 4,
-    BoardType: "compound_blocks",
     Level: 1,
-    GridUnit: 1,
-    Snap: {
-      AngleStep: 15,
-      AngleOptions: [15, 30, 45, 90],
-      PositionStep: 1
-    },
     Blocks: [
       {
         Id: "A",
         Size: [4, 4, 4],
         Position: [0, 0, 0],
-        RotationDeg: [0, 0, 0],
-        RotationOrder: "XYZ",
-        Color: "#19d8ff",
-        Locked: false,
-        Visible: true
+        RotationDeg: [0, 0, 0]
       }
     ],
-    SurfacePolicy: {
-      CoverageRule: "cell_center_inside_other_block",
-      RemoveFaceContact: true,
-      GenerateCutInteriorFaces: false,
-      RequireConnected: true,
-      RejectAmbiguousEdges: true
-    },
-    EditorConfig: {
-      LengthWeights: "2:20,3:30,4:24,5:14,6:8",
-      BendWeights: "0:32,1:38,2:24,3:6",
-      CrossFaceRate: 0.25,
-      FillRate: 0.34,
-      LineStyle: false
-    },
     BlockedCells: [],
     Arrows: arrows
   };
@@ -118,16 +92,11 @@ function baseBlockPayload(arrows = []) {
 
 function longCompoundPayload() {
   const payload = baseBlockPayload();
-  const colors = ["#19d8ff", "#b875ff", "#a8ef32", "#ff8f5f", "#77a8ff"];
   payload.Blocks = Array.from({ length: 5 }, (_, index) => ({
     Id: String.fromCharCode(65 + index),
     Size: [4, 4, 4],
     Position: [index * 4, 0, 0],
-    RotationDeg: [0, 0, 0],
-    RotationOrder: "XYZ",
-    Color: colors[index],
-    Locked: false,
-    Visible: true
+    RotationDeg: [0, 0, 0]
   }));
   return payload;
 }
@@ -335,11 +304,7 @@ async function runViewport(browser, viewport, screenshotPath) {
     Id: "B",
     Size: [4, 4, 4],
     Position: [12, 0, 0],
-    RotationDeg: [0, 0, 0],
-    RotationOrder: "XYZ",
-    Color: "#b875ff",
-    Locked: false,
-    Visible: true
+    RotationDeg: [0, 0, 0]
   });
   await importPayload(page, disconnected);
   await click(page, "#btnGenerate");
@@ -352,17 +317,14 @@ async function runViewport(browser, viewport, screenshotPath) {
 
   await importPayload(page, baseBlockPayload([
     {
-      Id: 0,
       Dir: "L",
-      Path: ["A:front:2_2", "A:front:1_2"],
-      Color: "#19d8ff"
+      Path: ["A:front:2_2", "A:front:1_2"]
     }
   ]));
   const directionMismatchStatus = await page.locator("#statusLine").innerText();
 
   await importPayload(page, baseBlockPayload([
     {
-      Id: 0,
       Dir: "R",
       Path: [
         "A:front:2_1",
@@ -379,8 +341,7 @@ async function runViewport(browser, viewport, screenshotPath) {
         "A:right:2_2",
         "A:right:2_1",
         "A:right:2_0"
-      ],
-      Color: "#b875ff"
+      ]
     }
   ]));
   const selfFacingStatus = await page.locator("#statusLine").innerText();
@@ -412,10 +373,19 @@ async function runViewport(browser, viewport, screenshotPath) {
   expect(messages.length === 0, `browser warnings/errors: ${messages.join(" | ")}`);
   expect(before.varied > 0 && after.varied > 0, `canvas did not render nonblank content in ${viewport.width}x${viewport.height}`);
   expect(initialStats.title === "3D 箭头组合体编辑器", `title mismatch: ${initialStats.title}`);
-  expect(initial.SchemaVersion === 4, "schema should be version 4");
-  expect(initial.BoardType === "compound_blocks", "board type should be compound_blocks");
+  expect(initial.Level === 1, "level should be exported");
   expect(initial.Blocks.length === 2, "default editor should start with 2 blocks");
-  expect(initial.MapValidation.CanGenerate === true, "default compound map should be valid");
+  expect(!("SchemaVersion" in initial), "SchemaVersion should be omitted");
+  expect(!("BoardType" in initial), "BoardType should be omitted");
+  expect(!("GridUnit" in initial), "GridUnit should be omitted");
+  expect(!("Snap" in initial), "Snap should be omitted");
+  expect(!("SurfacePolicy" in initial), "SurfacePolicy should be omitted");
+  expect(!("EditorConfig" in initial), "EditorConfig should be omitted");
+  expect(!("MapValidation" in initial), "MapValidation should be omitted");
+  expect(!("Color" in initial.Blocks[0]), "block color should be omitted");
+  expect(!("Locked" in initial.Blocks[0]), "block locked should be omitted");
+  expect(!("Visible" in initial.Blocks[0]), "block visible should be omitted");
+  expect(!("RotationOrder" in initial.Blocks[0]), "block rotation order should be omitted");
   expect(initialStats.statBlocks === "2", "block stat mismatch");
   expect(initialStats.statSurface > 0, "surface stat should be positive");
   expect(initialStats.mapChip === "可生成", "default map chip should be valid");
@@ -448,10 +418,10 @@ async function runViewport(browser, viewport, screenshotPath) {
   expect(initialViewportStability.hostDelta <= 3 && initialViewportStability.canvasDelta <= 6, `3D viewport height should stay stable after load: ${JSON.stringify(initialViewportStability)}`);
   expect(generatedStats.arrows > 0, `generation did not place arrows: ${generatedStats.status}`);
   expect(generated.Arrows.length === generatedStats.arrows, "exported arrow count should match UI");
-  expect(generated.MapValidation.CanGenerate === true, "generated map should stay structurally valid");
+  expect(!("MapValidation" in generated), "generated export should not include validation snapshot");
   expect(generatedStats.solveChip === "有解", `generated puzzle should be solvable: ${generatedStats.solveChip}`);
   expect(sample.Blocks.length === 3, "sample should load 3 blocks");
-  expect(sample.MapValidation.CanGenerate === true, "sample compound map should be valid");
+  expect(sample.Level === 1, "sample level should reset to 1");
   expect(nudgeStatus.includes("已移动"), `nudge status mismatch: ${nudgeStatus}`);
   expect(nudged.Blocks.find((block) => block.Id === "A").Position[0] === sampleAPosition[0] + 1, "X+ nudge should move selected block by one cell");
   expect(rotateStatus.includes("已旋转"), `rotate status mismatch: ${rotateStatus}`);
@@ -478,7 +448,7 @@ async function runViewport(browser, viewport, screenshotPath) {
     after,
     initial: {
       blocks: initial.Blocks.length,
-      surface: initial.MapValidation.SurfaceCellCount
+      level: initial.Level
     },
     initialViewportStability,
     generated: {

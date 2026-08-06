@@ -1,6 +1,6 @@
 # 3D Arrow Compound Editor Memory
 
-Last updated: 2026-08-05
+Last updated: 2026-08-06
 
 ## What This Is
 
@@ -15,18 +15,15 @@ Current level schema:
 
 ```json
 {
-  "SchemaVersion": 4,
-  "BoardType": "compound_blocks",
-  "GridUnit": 1,
+  "Level": 1,
   "Blocks": [],
-  "SurfacePolicy": {},
-  "EditorConfig": {},
-  "BlockedCells": [],
   "Arrows": []
 }
 ```
 
-The old single-cuboid `SchemaVersion: 3` / `BoardType: "cuboid"` logic is no longer the active editor logic.
+`BlockedCells` is optional and only exported when non-empty.
+
+The old `SchemaVersion` / `BoardType` wrapper is no longer part of the exported level JSON.
 
 ## Core Map Model
 
@@ -36,9 +33,8 @@ The old single-cuboid `SchemaVersion: 3` / `BoardType: "cuboid"` logic is no lon
   - `Size: [W, H, D]`
   - `Position: [x, y, z]`
   - `RotationDeg: [x, y, z]`
-  - `RotationOrder`
-  - `Color`
-  - `Visible`
+- Exported levels keep only `Id`, `Size`, `Position`, and non-default `RotationDeg`.
+- `RotationOrder`, `Color`, `Locked`, and `Visible` are editor-side fields only.
 - Blocks can be freely added in space through "自由添加".
 - Blocks can be attached to a selected surface cell through "贴面添加".
 - A selected Block can be moved onto a selected surface cell through "移动到选中表面".
@@ -141,28 +137,91 @@ Manual drawing:
 - `inputCrossRate` biases path candidates toward `edge_fold` steps.
 - Every placed arrow is validated and must preserve a quick solvability check.
 
+## Remote Auto Generation Config
+
+The planned R&D-facing remote config key is:
+
+```text
+arrow_auto_level_generation_control
+```
+
+The value is a JSON array. Auto-generated levels default to a single-Block map; the config controls that single Block's size and the arrow generation parameters.
+
+Example:
+
+```json
+[
+  {
+    "Level": [1, 1],
+    "BlockSize": [10, 10, 10],
+    "FillRate": 0.5,
+    "CrossFaceRate": 0.5,
+    "LengthWeight": "2:1,3:1,4:1,5:1,6:1,7:1,8:1,9:1,10:70",
+    "BendWeight": "0:65,1:35"
+  }
+]
+```
+
+Config matching:
+
+- `Level` is `[minLevel, maxLevel]`, inclusive.
+- Config rows should be sorted by `minLevel`.
+- Overlapping ranges should be rejected or avoided.
+- If a level has no exact matching range, use the nearest previous lower range.
+- If the level is lower than the first range, use the first range or a product default; this needs to be fixed in implementation.
+
+Fields:
+
+- `BlockSize`: `[W, H, D]` for the single generated Block. The generated Block should default to `Id: "A"`, `Position: [0, 0, 0]`, and `RotationDeg: [0, 0, 0]`.
+- `FillRate`: target occupancy ratio over final generatable Surface Cells, excluding blocked cells. Clamp to `[0, 1]`, but high values do not guarantee exact fill because solvability and path constraints can stop generation early. Current editor UI clamps to `0.88`.
+- `CrossFaceRate`: per-step cross-face candidate selection probability, not per-arrow cross-face probability. Clamp to `[0, 1]`.
+  - At each BodyPath generation step, if reachable `edge_fold` candidates exist and random hits `CrossFaceRate`, prefer those cross-face candidates.
+  - `CrossFaceRate = 1` still does not guarantee every arrow crosses a face because the start may be far from any fold edge, the path may end before reaching an edge, bend limits may prevent reaching the edge, the target may be occupied/blocked, or crossing may create repeats or an unsolvable puzzle.
+  - This only affects BodyPath generation. Runtime removal still uses `ForwardRay` and each graph step's `forwardAllowed`.
+- `LengthWeight`: weight string for arrow path length. Format is `"length:weight,length:weight"`.
+  - Need a final implementation decision: current editor treats length as total occupied cells including the head and clamps minimum length to `2`.
+  - If product wants single-cell arrows, implementation must support `Length = 1` and define how its direction is chosen.
+- `BendWeight`: weight string for bend count. Format is `"bendCount:weight,bendCount:weight"`.
+  - Recommended interpretation: maximum allowed bend count, not exact required bend count, because exact bends sharply increase generation failures.
+  - Current editor accepts paths with `actualBends <= targetBends`.
+
+Important wording for specs: `CrossFaceRate` is more accurately a cross-face candidate priority probability, and `FillRate` is a target fill rate, not a guaranteed final ratio.
+
 ## Import / Export
 
-Export writes:
+Export writes the minimal runtime level JSON:
 
-- `SchemaVersion: 4`
-- `BoardType: "compound_blocks"`
-- `GridUnit`
-- `Snap`
-- `Blocks`
-- `SurfacePolicy`
-- `EditorConfig`
-- `MapValidation`
-- `BlockedCells`
-- `Arrows`
+```json
+{
+  "Level": 1,
+  "Blocks": [
+    {
+      "Id": "A",
+      "Size": [6, 4, 4],
+      "Position": [0, 0, 0],
+      "RotationDeg": [0, 0, 0]
+    }
+  ],
+  "BlockedCells": ["A:top:2_1"],
+  "Arrows": [
+    {
+      "Dir": "U",
+      "Path": ["A:front:1_2", "A:front:2_2"]
+    }
+  ]
+}
+```
 
-Import requires:
+Rules:
 
-- `SchemaVersion === 4`
-- `BoardType === "compound_blocks"`
-- non-empty `Blocks`
+- `Level` is required.
+- `Blocks` is required and non-empty.
+- `Arrows` is required and can be empty.
+- `BlockedCells` is optional and omitted when empty.
+- `RotationDeg` is omitted when `[0, 0, 0]`.
+- `RotationOrder`, `Color`, `Locked`, `Visible`, `SchemaVersion`, `BoardType`, `GridUnit`, `Snap`, `SurfacePolicy`, `EditorConfig`, and `MapValidation` are not exported anymore.
 
-Import validates arrows against the generated Surface Graph. Invalid imported structure can be loaded for editing, but invalid arrows are rejected.
+Import requires `Level`, `Blocks`, and `Arrows`. Invalid arrows are rejected against the generated Surface Graph.
 
 ## UI Structure
 

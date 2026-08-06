@@ -995,7 +995,7 @@
       <div>
         <h2 class="section-title">JSON</h2>
         <textarea id="jsonBox" spellcheck="false"></textarea>
-        <p class="small-note" id="jsonNote">SchemaVersion 4，Blocks 生成最终 Surface Graph。</p>
+        <p class="small-note" id="jsonNote">最小导出字段：Level / Blocks / Arrows。</p>
       </div>
       <div class="json-actions">
         <button id="btnImport">导入</button>
@@ -1164,16 +1164,14 @@
     }
 
     function blockToJson(block) {
-      return {
+      const rotationDeg = block.rotationDeg.map((value) => Number(value.toFixed(3)));
+      const payload = {
         Id: block.id,
         Size: cloneArray(block.size),
-        Position: block.position.map((value) => Number(value.toFixed(3))),
-        RotationDeg: block.rotationDeg.map((value) => Number(value.toFixed(3))),
-        RotationOrder: block.rotationOrder,
-        Color: block.color,
-        Locked: block.locked,
-        Visible: block.visible
+        Position: block.position.map((value) => Number(value.toFixed(3)))
       };
+      if (rotationDeg.some((value) => Math.abs(value) > 1e-9)) payload.RotationDeg = rotationDeg;
+      return payload;
     }
 
     function blockQuaternion(block) {
@@ -2100,44 +2098,18 @@
     }
 
     function exportLevel() {
+      const exportedBlocks = state.blocks.filter((block) => block.visible !== false).map(blockToJson);
+      const exportedArrows = state.arrows.map((arrow) => ({
+        Dir: arrow.dir,
+        Path: [...arrow.path]
+      }));
+      const blockedCells = [...state.blockedCells].sort();
       const payload = {
-        SchemaVersion: 4,
-        BoardType: "compound_blocks",
         Level: state.level,
-        GridUnit: 1,
-        Snap: {
-          AngleStep: state.snapAngle,
-          AngleOptions: [15, 30, 45, 90],
-          PositionStep: 1
-        },
-        Blocks: state.blocks.map(blockToJson),
-        SurfacePolicy: {
-          CoverageRule: "cell_center_inside_other_block",
-          RemoveFaceContact: true,
-          GenerateCutInteriorFaces: false,
-          RequireConnected: true,
-          RejectAmbiguousEdges: true
-        },
-        EditorConfig: {
-          LengthWeights: els.inputLengthWeights.value,
-          BendWeights: els.inputBendWeights.value,
-          CrossFaceRate: Number(els.inputCrossRate.value),
-          FillRate: Number(els.inputFillRate.value),
-          LineStyle: state.lineStyle
-        },
-        MapValidation: {
-          SurfaceCellCount: state.surface.cells.size,
-          IssueCount: state.surface.issues.length,
-          CanGenerate: state.surface.canGenerate
-        },
-        BlockedCells: [...state.blockedCells].sort(),
-        Arrows: state.arrows.map((arrow) => ({
-          Id: arrow.id,
-          Dir: arrow.dir,
-          Path: [...arrow.path],
-          Color: arrow.color
-        }))
+        Blocks: exportedBlocks,
+        Arrows: exportedArrows
       };
+      if (blockedCells.length) payload.BlockedCells = blockedCells;
       els.jsonBox.value = JSON.stringify(payload, null, 2);
       els.jsonNote.textContent = `已导出 ${payload.Blocks.length} 个 Block，${payload.Arrows.length} 支箭头`;
       return payload;
@@ -2146,26 +2118,25 @@
     function importLevel() {
       try {
         const payload = JSON.parse(els.jsonBox.value);
-        if (payload.SchemaVersion !== 4) throw new Error("SchemaVersion 必须是 4");
-        if (payload.BoardType !== "compound_blocks") throw new Error("BoardType 必须是 compound_blocks");
+        const level = Number(payload.Level);
+        if (!Number.isFinite(level)) throw new Error("Level 必须是数字");
         if (!Array.isArray(payload.Blocks) || !payload.Blocks.length) throw new Error("Blocks 必须是非空数组");
-        state.snapAngle = Number(payload.Snap?.AngleStep) || 15;
-        els.inputSnap.value = String(state.snapAngle);
+        if (!Array.isArray(payload.Arrows)) throw new Error("Arrows 必须是数组");
+        state.level = Math.max(1, Math.round(level));
         state.blocks = payload.Blocks.map((raw, index) => normalizeBlock(raw, String.fromCharCode(65 + index)));
         state.selectedBlockId = state.blocks[0]?.id || null;
         buildSurface();
         state.blockedCells = new Set((payload.BlockedCells || []).filter((id) => state.surface.cells.has(id)));
         const importedArrows = [];
         for (const raw of payload.Arrows || []) {
+          if (!raw || !Array.isArray(raw.Path) || !raw.Path.length) throw new Error("Arrow.Path 必须是非空数组");
+          if (typeof raw.Dir !== "string") throw new Error("Arrow.Dir 必须是字符串");
           const path = [...raw.Path];
-          const arrow = makeArrow(path, raw.Dir, raw.Color, raw.Id);
+          const arrow = makeArrow(path, raw.Dir);
           validateArrowPath(arrow.path, arrow.dir, { arrows: importedArrows });
           importedArrows.push(arrow);
         }
         state.arrows = importedArrows;
-        state.lineStyle = Boolean(payload.EditorConfig?.LineStyle);
-        els.lineStyle.checked = state.lineStyle;
-        document.body.classList.toggle("line-style", state.lineStyle);
         syncGrid();
         state.lastSolve = quickSolveCheck();
         syncBlockForm();
@@ -2189,6 +2160,7 @@
     }
 
     function loadSample() {
+      state.level = 1;
       state.blocks = [
         normalizeBlock({ Id: "A", Size: [6, 4, 4], Position: [0, 0, 0], RotationDeg: [0, 0, 0], Color: "#19d8ff" }, "A"),
         normalizeBlock({ Id: "B", Size: [4, 4, 4], Position: [5, 0, 0], RotationDeg: [0, 0, 0], Color: "#b875ff" }, "B"),
