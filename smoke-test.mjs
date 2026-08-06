@@ -157,6 +157,68 @@ async function runViewport(browser, viewport, screenshotPath) {
     hasExactPanel: Boolean(document.querySelector(".exact-panel")),
     exportedFns: Object.keys(window.compoundArrowEditor || {})
   }));
+  const forwardPathRules = await page.evaluate(() => {
+    const editor = window.compoundArrowEditor;
+    const surface = editor.state.surface;
+    const seamStep = [...surface.graph.values()].find((step) => (
+      step.relation === "coplanar"
+      && step.from.split(":")[0] !== step.to.split(":")[0]
+    ));
+    const foldStep = [...surface.graph.values()].find((step) => step.relation === "edge_fold");
+    const seamRay = seamStep
+      ? editor.getForwardRay(seamStep.from, seamStep.fromDir)
+      : null;
+    const seamBlockerCell = seamRay?.cells.find((cellId) => cellId.split(":")[0] !== seamStep.from.split(":")[0]);
+    const seamHead = seamStep
+      ? { id: 900, dir: seamStep.fromDir, path: [seamStep.from] }
+      : null;
+    const seamBlocker = seamBlockerCell
+      ? { id: 901, dir: "U", path: [seamBlockerCell] }
+      : null;
+    const foldRay = foldStep
+      ? editor.getForwardRay(foldStep.from, foldStep.fromDir)
+      : null;
+    const foldTrace = foldStep
+      ? editor.getSurfaceTrace(foldStep.from, foldStep.fromDir)
+      : null;
+    const foldHead = foldStep
+      ? { id: 902, dir: foldStep.fromDir, path: [foldStep.from] }
+      : null;
+    const foldBlocker = foldStep
+      ? { id: 903, dir: "U", path: [foldStep.to] }
+      : null;
+    const holeCells = new Map([
+      ["A", { id: "A" }],
+      ["C", { id: "C" }]
+    ]);
+    const holeGraph = new Map([
+      ["C|R", {
+        from: "C",
+        fromDir: "R",
+        to: "A",
+        toDir: "L",
+        continueDir: "R",
+        relation: "coplanar"
+      }]
+    ]);
+    const holeRay = editor.getForwardRay("A", "R", holeGraph, holeCells);
+    return {
+      seamStep,
+      seamRay: seamRay && { cells: seamRay.cells, stopReason: seamRay.stopReason },
+      seamBlockerCell,
+      seamBlocked: seamHead && seamBlocker
+        ? editor.canRemoveArrow(seamHead, [seamHead, seamBlocker])
+        : null,
+      seamClear: seamHead ? editor.canRemoveArrow(seamHead, [seamHead]) : null,
+      foldStep,
+      foldRay: foldRay && { cells: foldRay.cells, stopReason: foldRay.stopReason },
+      foldTrace: foldTrace && { cells: foldTrace.cells, stopReason: foldTrace.stopReason },
+      foldTreatsTargetAsBlocker: foldHead && foldBlocker
+        ? editor.canRemoveArrow(foldHead, [foldHead, foldBlocker])
+        : null,
+      holeRay: { cells: holeRay.cells, stopReason: holeRay.stopReason }
+    };
+  });
   const initialViewportStability = await viewportHeightStability(page);
 
   await click(page, "#btnGenerate");
@@ -306,6 +368,18 @@ async function runViewport(browser, viewport, screenshotPath) {
   expect(initialStats.exportedFns.includes("buildSurface"), "runtime hook should expose buildSurface");
   expect(initialStats.exportedFns.includes("moveSelectedBlockToCell"), "runtime hook should expose moveSelectedBlockToCell");
   expect(initialStats.exportedFns.includes("resetCameraView"), "runtime hook should expose resetCameraView");
+  expect(initialStats.exportedFns.includes("getForwardRay"), "runtime hook should expose getForwardRay");
+  expect(initialStats.exportedFns.includes("getSurfaceTrace"), "runtime hook should expose getSurfaceTrace");
+  expect(forwardPathRules.seamStep, "default compound map should contain a coplanar Block seam");
+  expect(forwardPathRules.seamRay?.cells.includes(forwardPathRules.seamStep.to), "ForwardRay should continue across a coplanar Block seam");
+  expect(forwardPathRules.seamBlocked === false, `coplanar seam blocker should prevent removal: ${JSON.stringify(forwardPathRules)}`);
+  expect(forwardPathRules.seamClear === true, "clear coplanar ForwardRay should allow removal");
+  expect(forwardPathRules.foldStep, "default compound map should contain an edge-fold connection");
+  expect(forwardPathRules.foldRay?.stopReason === "fold_boundary", `ForwardRay should stop before edge_fold: ${JSON.stringify(forwardPathRules)}`);
+  expect(!forwardPathRules.foldRay?.cells.includes(forwardPathRules.foldStep.to), "edge-fold target should not be in ForwardRay");
+  expect(forwardPathRules.foldTrace?.cells.includes(forwardPathRules.foldStep.to), "SurfaceTrace should still cross edge_fold");
+  expect(forwardPathRules.foldTreatsTargetAsBlocker === true, "edge-fold target should not block current-face removal");
+  expect(forwardPathRules.holeRay.cells.length === 0 && forwardPathRules.holeRay.stopReason === "boundary", "ForwardRay should stop at a missing-cell hole instead of jumping");
   expect(initialViewportStability.hostDelta <= 3 && initialViewportStability.canvasDelta <= 6, `3D viewport height should stay stable after load: ${JSON.stringify(initialViewportStability)}`);
   expect(generatedStats.arrows > 0, `generation did not place arrows: ${generatedStats.status}`);
   expect(generated.Arrows.length === generatedStats.arrows, "exported arrow count should match UI");
@@ -347,6 +421,7 @@ async function runViewport(browser, viewport, screenshotPath) {
       solve: generatedStats.solveChip
     },
     sampleBlocks: sample.Blocks.length,
+    forwardPathRules,
     nudgedA: nudged.Blocks.find((block) => block.Id === "A").Position,
     movedB: moved.Blocks.find((block) => block.Id === "B").Position,
     attachedBlocks: attached.Blocks.length,

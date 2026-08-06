@@ -81,6 +81,7 @@ Coverage policy:
 - A connection is:
   - `coplanar` when normals and plane distance match.
   - `edge_fold` when the cells share an edge across different planes.
+- Surface graph steps carry `toDir` / `continueDir`, the target-cell local direction to use after crossing that shared edge.
 - More than two cells sharing the same edge create an `ambiguous_edge` issue.
 - The final external surface must be one connected component to generate arrows.
 - Disconnected maps can be edited/imported temporarily, but generation is blocked.
@@ -92,6 +93,10 @@ Coverage policy:
 - Path cells cannot repeat, enter blocked cells, or overlap other arrows.
 - Cross-plane/cross-Block motion is legal only through graph-connected shared edges.
 - The arrow body can cross multiple faces/Blocks.
+- Arrow logic deliberately separates three path types:
+  - `BodyPath`: arrow body path; can use both `coplanar` seams and `edge_fold` folded edges.
+  - `ForwardRay`: gameplay removal ray; follows only `coplanar` seams on the current continuous logical face.
+  - `SurfaceTrace`: self-facing validation trace; can use both `coplanar` and `edge_fold`.
 
 ### Head Direction
 
@@ -102,9 +107,12 @@ Coverage policy:
 
 ### Removal/Blocking
 
-- Movement checks blockers only along the head's current coplanar forward ray.
-- Bodies on other faces do not block the head's current-face movement ray.
-- A second forward-surface ray is used only to reject invalid self-facing shapes where the head points into its own cross-face body.
+- Movement checks blockers along `ForwardRay`.
+- `ForwardRay` continues across coplanar Block seams, so arrows on the same continuous logical face can block removal even when they belong to another Block.
+- `ForwardRay` stops at a 90° `edge_fold`; folded-face bodies do not block current-face movement.
+- A missing Surface Cell, hole, uncovered gap, or geometry boundary stops the ray and is treated as an open boundary.
+- `SurfaceTrace` is used only to reject invalid self-facing shapes where the head points into its own cross-face body.
+- Block geometry boundaries and blocked cells do not count as movement blockers.
 
 ## Editor Modes
 
@@ -195,6 +203,9 @@ window.compoundArrowEditor = {
   buildSurface,
   findDirectionBetweenCells,
   getPlanarRay,
+  getForwardRay,
+  getSurfaceTrace,
+  canRemoveArrow,
   quickSolveCheck,
   moveSelectedBlockToCell,
   resetCameraView,
@@ -223,3 +234,6 @@ window.compoundArrowEditor = {
 - Disconnected maps are marked invalid and cannot generate.
 - Direction mismatch arrows are rejected.
 - Self-facing cross-face arrows are rejected.
+- Coplanar Block seams remain in `ForwardRay` and can block removal.
+- 90° `edge_fold` targets are excluded from `ForwardRay` but remain reachable by `SurfaceTrace`.
+- Missing-cell holes stop `ForwardRay`; the ray does not jump to later cells.

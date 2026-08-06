@@ -1360,6 +1360,7 @@
             fromDir: a.dir,
             to: b.cell.id,
             toDir: OPPOSITE_DIR[b.dir],
+            continueDir: OPPOSITE_DIR[b.dir],
             relation
           });
           graph.set(directedKey(b.cell.id, b.dir), {
@@ -1367,6 +1368,7 @@
             fromDir: b.dir,
             to: a.cell.id,
             toDir: OPPOSITE_DIR[a.dir],
+            continueDir: OPPOSITE_DIR[a.dir],
             relation
           });
         } else if (entries.length > 2) {
@@ -1515,26 +1517,82 @@
         ray.push(next.id);
         seen.add(next.id);
         currentId = next.id;
-        currentDir = step.toDir;
+        currentDir = step.continueDir || step.toDir;
       }
       return ray;
     }
 
-    function getSurfaceForwardRay(cellId, dir, graph = state.surface.graph, cells = state.surface.cells) {
+    function getForwardRay(cellId, dir, graph = state.surface.graph, cells = state.surface.cells) {
       const ray = [];
+      const steps = [];
       let currentId = cellId;
       let currentDir = dir;
-      const seen = new Set([cellId]);
+      const visited = new Set();
+      if (!cells.has(cellId)) {
+        return { cells: ray, steps, stopReason: "issue", cycle: false };
+      }
       for (let guard = 0; guard < cells.size + 8; guard += 1) {
+        const stateKey = directedKey(currentId, currentDir);
+        if (visited.has(stateKey)) {
+          return { cells: ray, steps, stopReason: "cycle", cycle: true };
+        }
+        visited.add(stateKey);
         const step = graph.get(directedKey(currentId, currentDir));
         if (!step) break;
-        if (seen.has(step.to)) break;
+        if (!cells.has(step.to)) {
+          return { cells: ray, steps, stopReason: "issue", cycle: false };
+        }
+        if (step.relation === "edge_fold") {
+          return { cells: ray, steps, stopReason: "fold_boundary", cycle: false };
+        }
+        steps.push(step);
         ray.push(step.to);
-        seen.add(step.to);
         currentId = step.to;
-        currentDir = step.toDir;
+        currentDir = step.continueDir || step.toDir;
       }
-      return ray;
+      return {
+        cells: ray,
+        steps,
+        stopReason: "boundary",
+        cycle: false
+      };
+    }
+
+    function getSurfaceTrace(cellId, dir, graph = state.surface.graph, cells = state.surface.cells) {
+      const ray = [];
+      const steps = [];
+      let currentId = cellId;
+      let currentDir = dir;
+      const visited = new Set();
+      if (!cells.has(cellId)) {
+        return { cells: ray, steps, stopReason: "issue", cycle: false };
+      }
+      for (let guard = 0; guard < cells.size + 8; guard += 1) {
+        const stateKey = directedKey(currentId, currentDir);
+        if (visited.has(stateKey)) {
+          return { cells: ray, steps, stopReason: "cycle", cycle: true };
+        }
+        visited.add(stateKey);
+        const step = graph.get(directedKey(currentId, currentDir));
+        if (!step) break;
+        if (!cells.has(step.to)) {
+          return { cells: ray, steps, stopReason: "issue", cycle: false };
+        }
+        steps.push(step);
+        ray.push(step.to);
+        currentId = step.to;
+        currentDir = step.continueDir || step.toDir;
+      }
+      return {
+        cells: ray,
+        steps,
+        stopReason: "boundary",
+        cycle: false
+      };
+    }
+
+    function getSurfaceForwardRay(cellId, dir, graph = state.surface.graph, cells = state.surface.cells) {
+      return getForwardRay(cellId, dir, graph, cells).cells;
     }
 
     function validateArrowPath(path, dir, options = {}) {
@@ -1572,7 +1630,7 @@
           if (local.has(cellId)) throw new Error(`头部射线穿过自身身体：${cellId}`);
         }
         const headPlane = planeKey(cells.get(path[0]));
-        for (const cellId of getSurfaceForwardRay(path[0], dir, graph, cells)) {
+        for (const cellId of getSurfaceTrace(path[0], dir, graph, cells).cells) {
           const cell = cells.get(cellId);
           if (cell && planeKey(cell) !== headPlane && local.has(cellId)) {
             throw new Error(`头部朝向不能正对自己的跨面身体：${cellId}`);
@@ -1596,7 +1654,9 @@
       for (const item of arrows) {
         for (const cellId of item.path) grid.set(cellId, item.id);
       }
-      for (const cellId of getPlanarRay(arrow.path[0], arrow.dir)) {
+      const forward = getForwardRay(arrow.path[0], arrow.dir);
+      if (forward.cycle || forward.stopReason === "issue") return false;
+      for (const cellId of forward.cells) {
         const id = grid.get(cellId);
         if (id !== undefined && id !== arrow.id) return false;
       }
@@ -1970,11 +2030,16 @@
       if (!arrow) return false;
       if (!force && !canRemoveArrow(arrow)) {
         state.selectedArrowId = id;
-        const blockers = getPlanarRay(arrow.path[0], arrow.dir).filter((cellId) => {
+        const forward = getForwardRay(arrow.path[0], arrow.dir);
+        const blockers = forward.cells.filter((cellId) => {
           const blockerId = state.gridMap.get(cellId);
           return blockerId !== undefined && blockerId !== id;
         });
-        setStatus(`箭头 #${id} 被阻挡：${blockers.join("、") || "未知"}`);
+        if (forward.cycle) {
+          setStatus(`箭头 #${id} 的前进路径存在循环，不能移除`);
+        } else {
+          setStatus(`箭头 #${id} 被阻挡：${blockers.join("、") || "未知"}`);
+        }
         renderAll();
         return false;
       }
@@ -2779,6 +2844,9 @@
       buildSurface,
       findDirectionBetweenCells,
       getPlanarRay,
+      getForwardRay,
+      getSurfaceTrace,
+      canRemoveArrow,
       quickSolveCheck,
       moveSelectedBlockToCell,
       resetCameraView,
