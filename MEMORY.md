@@ -30,10 +30,10 @@ The old `SchemaVersion` / `BoardType` wrapper is no longer part of the exported 
 - The map is made from multiple unit-grid Blocks.
 - Each Block is a cube or cuboid with:
   - `Id`
-  - `Size: [W, H, D]`
+  - internal `size: [W, H, D]`
   - `Position: [x, y, z]`
   - `RotationDeg: [x, y, z]`
-- Exported levels keep only `Id`, `Size`, `Position`, and non-default `RotationDeg`.
+- Exported levels keep only `Id`, `BlockSize`, `Position`, and non-default `RotationDeg`.
 - `RotationOrder`, `Color`, `Locked`, and `Visible` are editor-side fields only.
 - Blocks can be freely added in space through "自由添加".
 - Blocks can be attached to a selected surface cell through "贴面添加".
@@ -197,7 +197,7 @@ Export writes the minimal runtime level JSON:
   "Blocks": [
     {
       "Id": "A",
-      "Size": [6, 4, 4],
+      "BlockSize": [6, 4, 4],
       "Position": [0, 0, 0],
       "RotationDeg": [0, 0, 0]
     }
@@ -218,6 +218,7 @@ Rules:
 - `Blocks` is required and non-empty.
 - `Arrows` is required and can be empty.
 - `BlockedCells` is optional and omitted when empty.
+- Block dimensions are exported as `BlockSize`; the editor's internal `size` field is unchanged.
 - `RotationDeg` is omitted when `[0, 0, 0]`.
 - `RotationOrder`, `Color`, `Locked`, `Visible`, `SchemaVersion`, `BoardType`, `GridUnit`, `Snap`, `SurfacePolicy`, `EditorConfig`, and `MapValidation` are not exported anymore.
 

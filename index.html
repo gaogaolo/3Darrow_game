@@ -1148,7 +1148,7 @@
     }
 
     function normalizeBlock(raw, fallbackId = nextBlockId()) {
-      const size = cloneArray(raw.Size || raw.size || [4, 4, 4]).map((value) => clamp(Math.round(value || 1), 1, 24));
+      const size = cloneArray(raw.BlockSize || raw.Size || raw.size || [4, 4, 4]).map((value) => clamp(Math.round(value || 1), 1, 24));
       const position = cloneArray(raw.Position || raw.position || [0, 0, 0]).map((value) => Number.isFinite(value) ? value : 0);
       const rotationDeg = cloneArray(raw.RotationDeg || raw.rotationDeg || [0, 0, 0]).map((value) => Number.isFinite(value) ? value : 0);
       return {
@@ -1167,7 +1167,7 @@
       const rotationDeg = block.rotationDeg.map((value) => Number(value.toFixed(3)));
       const payload = {
         Id: block.id,
-        Size: cloneArray(block.size),
+        BlockSize: cloneArray(block.size),
         Position: block.position.map((value) => Number(value.toFixed(3)))
       };
       if (rotationDeg.some((value) => Math.abs(value) > 1e-9)) payload.RotationDeg = rotationDeg;
@@ -1849,7 +1849,7 @@
       const id = nextBlockId();
       const created = normalizeBlock(block || {
         Id: id,
-        Size: [4, 4, 4],
+        BlockSize: [4, 4, 4],
         Position: [state.blocks.length * 5, 0, 0],
         RotationDeg: [0, 0, 0],
         Color: BLOCK_COLORS[state.blocks.length % BLOCK_COLORS.length]
@@ -1917,7 +1917,7 @@
       const placement = placementOnCell(cell, size);
       addBlock({
         Id: id,
-        Size: size,
+        BlockSize: size,
         Position: placement.position,
         RotationDeg: placement.rotationDeg,
         Color: BLOCK_COLORS[state.blocks.length % BLOCK_COLORS.length]
@@ -2162,9 +2162,9 @@
     function loadSample() {
       state.level = 1;
       state.blocks = [
-        normalizeBlock({ Id: "A", Size: [6, 4, 4], Position: [0, 0, 0], RotationDeg: [0, 0, 0], Color: "#19d8ff" }, "A"),
-        normalizeBlock({ Id: "B", Size: [4, 4, 4], Position: [5, 0, 0], RotationDeg: [0, 0, 0], Color: "#b875ff" }, "B"),
-        normalizeBlock({ Id: "C", Size: [4, 4, 2], Position: [1, 4, 0], RotationDeg: [0, 0, 0], Color: "#a8ef32" }, "C")
+        normalizeBlock({ Id: "A", BlockSize: [6, 4, 4], Position: [0, 0, 0], RotationDeg: [0, 0, 0], Color: "#19d8ff" }, "A"),
+        normalizeBlock({ Id: "B", BlockSize: [4, 4, 4], Position: [5, 0, 0], RotationDeg: [0, 0, 0], Color: "#b875ff" }, "B"),
+        normalizeBlock({ Id: "C", BlockSize: [4, 4, 2], Position: [1, 4, 0], RotationDeg: [0, 0, 0], Color: "#a8ef32" }, "C")
       ];
       state.selectedBlockId = "A";
       state.selectedCellId = null;
@@ -2812,8 +2812,8 @@
 
     function bootstrap() {
       state.blocks = [
-        normalizeBlock({ Id: "A", Size: [6, 4, 4], Position: [0, 0, 0], RotationDeg: [0, 0, 0], Color: "#19d8ff" }, "A"),
-        normalizeBlock({ Id: "B", Size: [4, 4, 4], Position: [5, 0, 0], RotationDeg: [0, 0, 0], Color: "#b875ff" }, "B")
+        normalizeBlock({ Id: "A", BlockSize: [6, 4, 4], Position: [0, 0, 0], RotationDeg: [0, 0, 0], Color: "#19d8ff" }, "A"),
+        normalizeBlock({ Id: "B", BlockSize: [4, 4, 4], Position: [5, 0, 0], RotationDeg: [0, 0, 0], Color: "#b875ff" }, "B")
       ];
       state.selectedBlockId = "A";
       buildSurface();

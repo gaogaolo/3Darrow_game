@@ -80,7 +80,7 @@ function baseBlockPayload(arrows = []) {
     Blocks: [
       {
         Id: "A",
-        Size: [4, 4, 4],
+        BlockSize: [4, 4, 4],
         Position: [0, 0, 0],
         RotationDeg: [0, 0, 0]
       }
@@ -94,7 +94,7 @@ function longCompoundPayload() {
   const payload = baseBlockPayload();
   payload.Blocks = Array.from({ length: 5 }, (_, index) => ({
     Id: String.fromCharCode(65 + index),
-    Size: [4, 4, 4],
+    BlockSize: [4, 4, 4],
     Position: [index * 4, 0, 0],
     RotationDeg: [0, 0, 0]
   }));
@@ -302,7 +302,7 @@ async function runViewport(browser, viewport, screenshotPath) {
   const disconnected = baseBlockPayload();
   disconnected.Blocks.push({
     Id: "B",
-    Size: [4, 4, 4],
+    BlockSize: [4, 4, 4],
     Position: [12, 0, 0],
     RotationDeg: [0, 0, 0]
   });
@@ -375,6 +375,8 @@ async function runViewport(browser, viewport, screenshotPath) {
   expect(initialStats.title === "3D 箭头组合体编辑器", `title mismatch: ${initialStats.title}`);
   expect(initial.Level === 1, "level should be exported");
   expect(initial.Blocks.length === 2, "default editor should start with 2 blocks");
+  expect(Array.isArray(initial.Blocks[0].BlockSize), "BlockSize should be exported");
+  expect(!("Size" in initial.Blocks[0]), "Size should be renamed to BlockSize");
   expect(!("SchemaVersion" in initial), "SchemaVersion should be omitted");
   expect(!("BoardType" in initial), "BoardType should be omitted");
   expect(!("GridUnit" in initial), "GridUnit should be omitted");
