@@ -124,6 +124,7 @@ async function runViewport(browser, viewport, screenshotPath) {
     hasMoveButton: Boolean(document.querySelector("#btnMoveBlockToCell")),
     hasResetButton: Boolean(document.querySelector("#btnResetCamera")),
     hasExactPanel: Boolean(document.querySelector(".exact-panel")),
+    rewardReady: Boolean(window.compoundArrowEditor?.state?.reward) && window.compoundArrowEditor.state.reward.unlocked === false,
     exportedFns: Object.keys(window.compoundArrowEditor || {})
   }));
   const forwardPathRules = await page.evaluate(() => {
@@ -346,6 +347,52 @@ async function runViewport(browser, viewport, screenshotPath) {
   ]));
   const selfFacingStatus = await page.locator("#statusLine").innerText();
 
+  await importPayload(page, baseBlockPayload([
+    {
+      Dir: "L",
+      Path: ["A:front:1_1", "A:front:1_2"]
+    },
+    {
+      Dir: "L",
+      Path: ["A:front:2_1", "A:front:2_2"]
+    }
+  ]));
+  await page.locator('[data-mode="play"]').click({ force: true });
+  const importedMultiBefore = await page.evaluate(() => ({
+    ids: window.compoundArrowEditor.state.arrows.map((arrow) => arrow.id),
+    arrows: window.compoundArrowEditor.state.arrows.length,
+    rewardUnlocked: window.compoundArrowEditor.state.reward.unlocked
+  }));
+  await page.locator(".atlas-cell.occupied").first().click({ force: true });
+  await page.waitForTimeout(350);
+  const importedMultiAfter = await page.evaluate(() => ({
+    ids: window.compoundArrowEditor.state.arrows.map((arrow) => arrow.id),
+    arrows: window.compoundArrowEditor.state.arrows.length,
+    rewardUnlocked: window.compoundArrowEditor.state.reward.unlocked,
+    status: document.querySelector("#statusLine").textContent
+  }));
+
+  await importPayload(page, baseBlockPayload([
+    {
+      Dir: "L",
+      Path: ["A:front:1_1", "A:front:1_2"]
+    }
+  ]));
+  await page.locator('[data-mode="play"]').click({ force: true });
+  await page.locator(".atlas-cell.occupied").first().click({ force: true });
+  await page.waitForTimeout(500);
+  const rewardStats = await page.evaluate(() => {
+    const editor = window.compoundArrowEditor;
+    const exported = editor.exportLevel();
+    return {
+      unlocked: editor.state.reward.unlocked,
+      revealAt: Boolean(editor.state.reward.revealAt),
+      arrows: editor.state.arrows.length,
+      status: document.querySelector("#statusLine").textContent,
+      exported
+    };
+  });
+
   const after = await canvasStats(page);
   const finalStats = await page.evaluate(() => ({
     overflowX: document.documentElement.scrollWidth > document.documentElement.clientWidth + 2,
@@ -394,6 +441,7 @@ async function runViewport(browser, viewport, screenshotPath) {
   expect(initialStats.hasMoveButton, "move-to-surface button should exist");
   expect(initialStats.hasResetButton, "reset-camera button should exist");
   expect(initialStats.hasExactPanel, "exact coordinate panel should exist");
+  expect(initialStats.rewardReady, "reward core state should initialize locked and ready");
   expect(initialStats.exportedFns.includes("buildSurface"), "runtime hook should expose buildSurface");
   expect(initialStats.exportedFns.includes("moveSelectedBlockToCell"), "runtime hook should expose moveSelectedBlockToCell");
   expect(initialStats.exportedFns.includes("resetCameraView"), "runtime hook should expose resetCameraView");
@@ -440,6 +488,13 @@ async function runViewport(browser, viewport, screenshotPath) {
   expect(disconnectedStats.status.includes("地图结构存在问题"), `invalid generate status mismatch: ${disconnectedStats.status}`);
   expect(directionMismatchStatus.includes("箭头方向必须背向头部身体延展方向"), `direction mismatch check failed: ${directionMismatchStatus}`);
   expect(selfFacingStatus.includes("头部朝向不能正对自己的跨面身体"), `self-facing cross-face check failed: ${selfFacingStatus}`);
+  expect(importedMultiBefore.arrows === 2 && new Set(importedMultiBefore.ids).size === 2, `imported arrows should receive unique runtime ids: ${JSON.stringify(importedMultiBefore)}`);
+  expect(importedMultiAfter.arrows === 1, `removing one imported arrow should not delete the whole imported level: ${JSON.stringify(importedMultiAfter)}`);
+  expect(!importedMultiAfter.rewardUnlocked, `reward should not unlock while imported arrows remain: ${JSON.stringify(importedMultiAfter)}`);
+  expect(rewardStats.unlocked && rewardStats.revealAt, `reward should unlock after the last arrow is removed: ${JSON.stringify(rewardStats)}`);
+  expect(rewardStats.arrows === 0, "reward test should remove the only arrow");
+  expect(rewardStats.status.includes("奖励钱堆"), `reward status mismatch: ${rewardStats.status}`);
+  expect(!("Reward" in rewardStats.exported) && !("RewardState" in rewardStats.exported), "reward visual state should not be exported");
   expect(!initialStats.overflowX && !finalStats.overflowX, `horizontal overflow detected: ${JSON.stringify(finalStats.overflow)}`);
 
   await page.screenshot({ path: screenshotPath, fullPage: true });
@@ -467,7 +522,13 @@ async function runViewport(browser, viewport, screenshotPath) {
     longFrame,
     disconnectedStats,
     directionMismatchStatus,
-    selfFacingStatus
+    selfFacingStatus,
+    importedMultiAfter,
+    rewardStats: {
+      unlocked: rewardStats.unlocked,
+      arrows: rewardStats.arrows,
+      status: rewardStats.status
+    }
   };
 }
 

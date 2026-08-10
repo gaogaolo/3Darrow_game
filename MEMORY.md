@@ -1,6 +1,6 @@
 # 3D Arrow Compound Editor Memory
 
-Last updated: 2026-08-06
+Last updated: 2026-08-07
 
 ## What This Is
 
@@ -219,10 +219,30 @@ Rules:
 - `Arrows` is required and can be empty.
 - `BlockedCells` is optional and omitted when empty.
 - Block dimensions are exported as `BlockSize`; the editor's internal `size` field is unchanged.
+- `Size` / `size` are import-compatible legacy aliases only. The editor no longer emits `Size` in exported JSON.
 - `RotationDeg` is omitted when `[0, 0, 0]`.
 - `RotationOrder`, `Color`, `Locked`, `Visible`, `SchemaVersion`, `BoardType`, `GridUnit`, `Snap`, `SurfacePolicy`, `EditorConfig`, and `MapValidation` are not exported anymore.
 
 Import requires `Level`, `Blocks`, and `Arrows`. Invalid arrows are rejected against the generated Surface Graph.
+Imported arrows are re-numbered internally in file order because the exported JSON schema does not store arrow ids.
+
+## Export Field Reference
+
+- `Level`, format: number. Controls the current exported level id.
+- `Blocks`, format: array of objects. Controls the full 3D block layout of the map.
+  - `Id`, format: string. Unique block id; arrow paths and blocked cells reference this id.
+  - `BlockSize`, format: `[W, H, D]`. Controls the block size in grid cells along local X/Y/Z.
+  - `Position`, format: `[x, y, z]`. Controls the block center position in world coordinates.
+  - `RotationDeg`, format: `[x, y, z]`. Controls block rotation in degrees around local XYZ axes; omitted when `[0, 0, 0]`.
+- `BlockedCells`, format: string array, optional. Controls blocked surface cells.
+  - Each item is a surface-cell id in the form `BlockId:Face:row_col`, for example `A:front:2_3`.
+  - `Face` is one of `front / back / left / right / top / bottom`.
+- `Arrows`, format: array of objects. Controls all arrow paths in the level.
+  - `Dir`, format: string. Controls the arrow head direction; only `U / D / L / R` are valid.
+  - `Path`, format: string array. Controls the ordered surface-cell path occupied by that arrow body.
+  - Each path item uses the same `BlockId:Face:row_col` format as `BlockedCells`.
+
+Editor-only fields such as `Color`, `Locked`, `Visible`, and `RotationOrder` stay internal and are not exported.
 
 ## UI Structure
 
@@ -258,6 +278,19 @@ Important UI ids:
 - Block shells are transparent cuboids with edge outlines.
 - Arrow bodies are cylinders and arrow heads are triangle meshes.
 - Ambiguous graph edges render as issue lines.
+
+## Reward Core
+
+- Each level renders one reward core at the geometric center of the current compound shape.
+- The reward core is only a visual layer; it is not part of export/import JSON.
+- The core is a clustered cash pile inspired by the provided reference:
+  - multiple green bill bundles piled together
+  - white center bands
+  - gold side strips
+- The reward core is visible during editor preview and gameplay.
+- The outer cube shell and arrows stay semi-transparent so the reward core can be seen through them.
+- When the last playable arrow is removed during preview/play, the cube enters a purely visual "broken open" state and the reward core pops out with shard fragments.
+- Structure changes, import, clear, and regeneration reset the reward reveal state.
 
 ## Runtime Hooks
 
@@ -300,6 +333,7 @@ window.compoundArrowEditor = {
 - Disconnected maps are marked invalid and cannot generate.
 - Direction mismatch arrows are rejected.
 - Self-facing cross-face arrows are rejected.
+- Reward core is visible in preview and unlocks when the last playable arrow is removed.
 - Coplanar Block seams remain in `ForwardRay` and can block removal.
 - Cross-Block 90° `edge_fold` seams remain in `ForwardRay` and can block removal.
 - Same-Block 90° `edge_fold` targets are excluded from `ForwardRay` but remain reachable by `SurfaceTrace`.
