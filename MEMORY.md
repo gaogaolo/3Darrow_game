@@ -1,6 +1,6 @@
 # 3D Arrow Compound Editor Memory
 
-Last updated: 2026-08-07
+Last updated: 2026-08-10
 
 ## What This Is
 
@@ -136,6 +136,19 @@ Manual drawing:
 - Length and bend distributions use the same editable weight-string format as the earlier editor.
 - `inputCrossRate` biases path candidates toward `edge_fold` steps.
 - Every placed arrow is validated and must preserve a quick solvability check.
+
+## Reward Visual
+
+- The editor renders a visual-only money pile inside the solid Block volume; it is not exported and does not affect gameplay, blockers, generation, import, or solve checks.
+- When only one Block exists, the reward is centered inside that Block as much as the available solid volume allows.
+- When multiple Blocks form one combined solid, reward placement uses a center-priority union fit:
+  - Compute the combined shape center from the visible external frame.
+  - Add the volume-weighted Block center as a secondary target.
+  - Project these targets into each visible Block and sample nearby internal points.
+  - Pick the nearest candidate to the combined shape center that can fit the reward footprint, preferring a comfortable fit when available.
+  - If the full pile cannot fit without crossing outside the solid union, the pile automatically shrinks.
+- The reward center must be inside the union of visible Block volumes. It may shift slightly from an empty gap/hole into nearby solid volume, but the fitted pile footprint must remain inside the实体.
+- For cross/intersecting Block layouts, this avoids placing a single reward in an exposed hollow while still keeping the reward as central as possible within the combined实体.
 
 ## Remote Auto Generation Config
 
@@ -281,7 +294,7 @@ Important UI ids:
 
 ## Reward Core
 
-- Each level renders one reward core at the geometric center of the current compound shape.
+- Each level renders one reward core anchored to a solid interior point of the current compound shape, not the raw geometric center.
 - The reward core is only a visual layer; it is not part of export/import JSON.
 - The core is a clustered cash pile inspired by the provided reference:
   - multiple green bill bundles piled together
@@ -289,6 +302,7 @@ Important UI ids:
   - gold side strips
 - The reward core is visible during editor preview and gameplay.
 - The outer cube shell and arrows stay semi-transparent so the reward core can be seen through them.
+- Reward placement now prefers the thickest interior anchor inside the compound body and automatically shrinks when the available solid room is tight, so the pile stays inside the实体 volume and does not leak into cavities.
 - When the last playable arrow is removed during preview/play, the cube enters a purely visual "broken open" state and the reward core pops out with shard fragments.
 - Structure changes, import, clear, and regeneration reset the reward reveal state.
 

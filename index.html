@@ -1029,6 +1029,10 @@
     };
     const EPS = 1e-4;
     const HASH_SCALE = 1000;
+    const REWARD_FIT_MARGIN = 0.84;
+    const REWARD_MIN_FIT_SCALE = 0.34;
+    const REWARD_FOOTPRINT_SCALE = { x: 1.74, y: 1.26, z: 1.62 };
+    const REWARD_CENTER_SEARCH_OFFSETS = [-1, 0, 1];
 
     const state = {
       level: 1,
@@ -2479,15 +2483,185 @@
       return 1 - Math.pow(1 - t, 3);
     }
 
+    function isPointInsideBlock(point, block, margin = EPS) {
+      const local = worldToLocal(block, point);
+      const half = block.size.map((value) => value / 2);
+      return Math.abs(local.x) <= half[0] + margin
+        && Math.abs(local.y) <= half[1] + margin
+        && Math.abs(local.z) <= half[2] + margin;
+    }
+
+    function isPointInsideUnion(point, blocks, margin = EPS) {
+      return blocks.some((block) => isPointInsideBlock(point, block, margin));
+    }
+
+    function clampPointToBlock(point, block, inset = 0.06) {
+      const local = worldToLocal(block, point);
+      const half = block.size.map((value) => value / 2);
+      const limits = half.map((value) => Math.max(0, value - Math.min(inset, value * 0.4)));
+      local.set(
+        clamp(local.x, -limits[0], limits[0]),
+        clamp(local.y, -limits[1], limits[1]),
+        clamp(local.z, -limits[2], limits[2])
+      );
+      return localToWorld(block, local);
+    }
+
+    function rewardNearbyBlockPoints(block, targetPoint, inset = 0.08) {
+      if (!targetPoint) return [];
+      const localTarget = worldToLocal(block, targetPoint);
+      const half = block.size.map((value) => value / 2);
+      const limits = half.map((value) => Math.max(0, value - Math.min(inset, value * 0.4)));
+      const points = [];
+      for (const xOffset of REWARD_CENTER_SEARCH_OFFSETS) {
+        for (const yOffset of REWARD_CENTER_SEARCH_OFFSETS) {
+          for (const zOffset of REWARD_CENTER_SEARCH_OFFSETS) {
+            const local = vec(
+              clamp(localTarget.x + xOffset, -limits[0], limits[0]),
+              clamp(localTarget.y + yOffset, -limits[1], limits[1]),
+              clamp(localTarget.z + zOffset, -limits[2], limits[2])
+            );
+            points.push(localToWorld(block, local));
+          }
+        }
+      }
+      return points;
+    }
+
+    function rewardCandidatePoints(blocks, centerFallback) {
+      const points = [];
+      const seen = new Set();
+      const pushPoint = (point) => {
+        const key = pointKey(point);
+        if (seen.has(key)) return;
+        seen.add(key);
+        points.push(point.clone());
+      };
+      if (centerFallback) pushPoint(centerFallback);
+      let weighted = vec(0, 0, 0);
+      let totalVolume = 0;
+      for (const block of blocks) {
+        const center = localToWorld(block, vec(0, 0, 0));
+        pushPoint(center);
+        pushPoint(clampPointToBlock(centerFallback, block));
+        for (const point of rewardNearbyBlockPoints(block, centerFallback)) pushPoint(point);
+        const volume = block.size[0] * block.size[1] * block.size[2];
+        weighted.add(center.clone().multiplyScalar(volume));
+        totalVolume += volume;
+      }
+      if (totalVolume > EPS) {
+        const weightedCenter = weighted.multiplyScalar(1 / totalVolume);
+        pushPoint(weightedCenter);
+        for (const block of blocks) {
+          pushPoint(clampPointToBlock(weightedCenter, block));
+          for (const point of rewardNearbyBlockPoints(block, weightedCenter)) pushPoint(point);
+        }
+      }
+      for (let i = 0; i < blocks.length; i += 1) {
+        const a = localToWorld(blocks[i], vec(0, 0, 0));
+        for (let j = i + 1; j < blocks.length; j += 1) {
+          const b = localToWorld(blocks[j], vec(0, 0, 0));
+          pushPoint(a.clone().add(b).multiplyScalar(0.5));
+        }
+      }
+      return points;
+    }
+
+    function rewardBoxSamplePoints(center, size) {
+      const offsets = [-0.5, -0.25, 0, 0.25, 0.5];
+      const points = [];
+      for (const x of offsets) {
+        for (const y of offsets) {
+          for (const z of offsets) {
+            points.push(center.clone().add(vec(
+              x * size.x,
+              y * size.y,
+              z * size.z
+            )));
+          }
+        }
+      }
+      return points;
+    }
+
+    function rewardBoxFitsUnion(center, size, blocks) {
+      return rewardBoxSamplePoints(center, size).every((point) => isPointInsideUnion(point, blocks));
+    }
+
+    function rewardFitScaleAtPoint(center, desiredSize, blocks) {
+      if (!isPointInsideUnion(center, blocks)) return 0;
+      if (rewardBoxFitsUnion(center, desiredSize, blocks)) return 1;
+      let low = 0;
+      let high = 1;
+      for (let iteration = 0; iteration < 18; iteration += 1) {
+        const middle = (low + high) * 0.5;
+        const size = desiredSize.clone().multiplyScalar(middle);
+        if (rewardBoxFitsUnion(center, size, blocks)) low = middle;
+        else high = middle;
+      }
+      return low;
+    }
+
     function rewardMetrics() {
+      const visibleBlocks = state.blocks.filter((block) => block.visible);
       const bounds = boundsFromPoints(shapeFramePoints());
       const size = bounds.getSize(new THREE.Vector3());
-      const center = bounds.getCenter(new THREE.Vector3());
-      const width = clamp(size.x * 0.56 + size.z * 0.1, 2.1, Math.max(2.6, size.x * 0.82));
-      const depth = clamp(Math.min(size.z * 0.58, width * 0.56), 0.95, Math.max(1.3, width * 0.62));
-      const height = clamp(Math.min(size.y * 0.38, width * 0.34), 0.76, Math.max(0.94, size.y * 0.48));
+      const centerFallback = bounds.getCenter(new THREE.Vector3());
+      const desiredSize = new THREE.Vector3(
+        clamp(size.x * 0.56 + size.z * 0.1, 2.1, Math.max(2.6, size.x * 0.82)),
+        clamp(Math.min(size.y * 0.38, Math.max(2.1, size.x * 0.82) * 0.34), 0.76, Math.max(0.94, size.y * 0.48)),
+        clamp(Math.min(size.z * 0.58, Math.max(2.1, size.x * 0.82) * 0.56), 0.95, Math.max(1.3, Math.max(2.1, size.x * 0.82) * 0.62))
+      );
+      const candidates = rewardCandidatePoints(visibleBlocks, centerFallback);
+      const scoredCandidates = [];
+      for (const candidate of candidates) {
+        const fitScale = rewardFitScaleAtPoint(candidate, new THREE.Vector3(
+          desiredSize.x * REWARD_FOOTPRINT_SCALE.x,
+          desiredSize.y * REWARD_FOOTPRINT_SCALE.y,
+          desiredSize.z * REWARD_FOOTPRINT_SCALE.z
+        ), visibleBlocks);
+        if (fitScale <= EPS) continue;
+        scoredCandidates.push({
+          point: candidate,
+          fitScale,
+          distance: candidate.distanceTo(centerFallback),
+          blocks: visibleBlocks.filter((block) => isPointInsideBlock(candidate, block))
+        });
+      }
+      const comfortable = scoredCandidates.filter((candidate) => candidate.fitScale >= REWARD_MIN_FIT_SCALE);
+      const ranked = (comfortable.length ? comfortable : scoredCandidates).sort((a, b) => (
+        a.distance - b.distance
+        || b.fitScale - a.fitScale
+      ));
+      const best = ranked[0] || {
+        point: centerFallback.clone(),
+        fitScale: 0.08,
+        distance: 0,
+        blocks: visibleBlocks
+      };
+      const fitScale = clamp(best.fitScale * REWARD_FIT_MARGIN, 0.08, 1);
+      const width = desiredSize.x * fitScale;
+      const height = desiredSize.y * fitScale;
+      const depth = desiredSize.z * fitScale;
+      const roomWidth = desiredSize.x * REWARD_FOOTPRINT_SCALE.x * fitScale;
+      const roomHeight = desiredSize.y * REWARD_FOOTPRINT_SCALE.y * fitScale;
+      const roomDepth = desiredSize.z * REWARD_FOOTPRINT_SCALE.z * fitScale;
       const radius = Math.min(width, depth) * 0.12;
-      return { bounds, size, center, width, depth, height, radius };
+      return {
+        bounds,
+        size,
+        center: best.point,
+        width,
+        depth,
+        height,
+        radius,
+        roomWidth,
+        roomDepth,
+        roomHeight,
+        supportBlocks: best.blocks.map((block) => block.id),
+        fitScale: best.fitScale,
+        distanceToCenter: best.distance
+      };
     }
 
     function roundedRectShape(width, depth, radius) {
@@ -2706,12 +2880,22 @@
     function renderRewardCore() {
       const metrics = rewardMetrics();
       const group = buildMoneyPile(metrics);
+      const pileBounds = new THREE.Box3().setFromObject(group);
+      const pileSize = pileBounds.getSize(new THREE.Vector3());
+      const fitScale = Math.min(
+        metrics.roomWidth / Math.max(EPS, pileSize.x),
+        metrics.roomHeight / Math.max(EPS, pileSize.y),
+        metrics.roomDepth / Math.max(EPS, pileSize.z),
+        1
+      );
+      const scale = Number.isFinite(fitScale) && fitScale > 0 ? fitScale : 1;
+      group.scale.setScalar(scale);
       if (state.reward.unlocked) {
         group.userData = {
           fx: "rewardCore",
           basePosition: metrics.center.clone(),
           baseRotationY: 0,
-          lift: metrics.height * 0.32
+          lift: metrics.height * 0.32 * scale
         };
         rewardFxNodes.push(group);
         for (const child of group.children) {
@@ -2719,7 +2903,7 @@
         }
         const light = new THREE.PointLight(0xffdc79, 2.6, Math.max(metrics.width, metrics.depth) * 5);
         light.position.copy(metrics.center);
-        light.position.y += metrics.height * 0.75;
+        light.position.y += metrics.height * 0.75 * scale;
         group.userData.light = light;
         worldGroup.add(light);
       }
