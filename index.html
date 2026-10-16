@@ -1521,13 +1521,9 @@
 
     function inferHeadDirectionFromPath(path, graph = state.surface.graph) {
       if (path.length < 2) return null;
-      const firstDir = findDirectionBetweenCells(path[0], path[1], graph);
-      if (!firstDir) return null;
-      if (path.length >= 3) {
-        const secondDir = findDirectionBetweenCells(path[1], path[2], graph);
-        if (secondDir !== firstDir) return null;
-      }
-      return firstDir;
+      // The head direction is defined only by its first body cell. The rest of
+      // the body may turn immediately, including right after crossing a face.
+      return findDirectionBetweenCells(path[0], path[1], graph);
     }
 
     function getPlanarRay(cellId, dir, graph = state.surface.graph, cells = state.surface.cells) {
@@ -1653,18 +1649,11 @@
       }
       if (dir) {
         const inferred = inferHeadDirectionFromPath(path, graph);
-        if (path.length >= 2 && !inferred) throw new Error("头部后两节身体必须沿同一方向延展");
+        if (path.length >= 2 && !inferred) throw new Error("无法从头部第一节身体推导方向");
         const expected = inferred ? OPPOSITE_DIR[inferred] : dir;
         if (dir !== expected) throw new Error(`箭头方向必须背向头部身体延展方向：应为 ${expected}，当前为 ${dir}`);
         for (const cellId of getPlanarRay(path[0], dir, graph, cells)) {
           if (local.has(cellId)) throw new Error(`头部射线穿过自身身体：${cellId}`);
-        }
-        const headPlane = planeKey(cells.get(path[0]));
-        for (const cellId of getSurfaceTrace(path[0], dir, graph, cells).cells) {
-          const cell = cells.get(cellId);
-          if (cell && planeKey(cell) !== headPlane && local.has(cellId)) {
-            throw new Error(`头部朝向不能正对自己的跨面身体：${cellId}`);
-          }
         }
       }
       return true;

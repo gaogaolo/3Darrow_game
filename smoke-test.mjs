@@ -327,6 +327,14 @@ async function runViewport(browser, viewport, screenshotPath) {
   await importPayload(page, baseBlockPayload([
     {
       Dir: "R",
+      Path: ["A:front:2_2", "A:front:2_1", "A:front:1_1"]
+    }
+  ]));
+  const immediateTurnStatus = await page.locator("#statusLine").innerText();
+
+  await importPayload(page, baseBlockPayload([
+    {
+      Dir: "R",
       Path: [
         "A:front:2_1",
         "A:front:2_0",
@@ -487,7 +495,8 @@ async function runViewport(browser, viewport, screenshotPath) {
   expect(disconnectedStats.issueText.includes("地图未连通"), `disconnected issue missing: ${disconnectedStats.issueText}`);
   expect(disconnectedStats.status.includes("地图结构存在问题"), `invalid generate status mismatch: ${disconnectedStats.status}`);
   expect(directionMismatchStatus.includes("箭头方向必须背向头部身体延展方向"), `direction mismatch check failed: ${directionMismatchStatus}`);
-  expect(selfFacingStatus.includes("头部朝向不能正对自己的跨面身体"), `self-facing cross-face check failed: ${selfFacingStatus}`);
+  expect(immediateTurnStatus.includes("导入完成：1 个 Block，1 支箭头"), `immediate body turn should import: ${immediateTurnStatus}`);
+  expect(selfFacingStatus.includes("导入完成：1 个 Block，1 支箭头"), `self-facing cross-face path should import: ${selfFacingStatus}`);
   expect(importedMultiBefore.arrows === 2 && new Set(importedMultiBefore.ids).size === 2, `imported arrows should receive unique runtime ids: ${JSON.stringify(importedMultiBefore)}`);
   expect(importedMultiAfter.arrows === 1, `removing one imported arrow should not delete the whole imported level: ${JSON.stringify(importedMultiAfter)}`);
   expect(!importedMultiAfter.rewardUnlocked, `reward should not unlock while imported arrows remain: ${JSON.stringify(importedMultiAfter)}`);
@@ -522,6 +531,7 @@ async function runViewport(browser, viewport, screenshotPath) {
     longFrame,
     disconnectedStats,
     directionMismatchStatus,
+    immediateTurnStatus,
     selfFacingStatus,
     importedMultiAfter,
     rewardStats: {

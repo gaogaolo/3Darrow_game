@@ -1,6 +1,6 @@
 # 3D Arrow Compound Editor Memory
 
-Last updated: 2026-08-10
+Last updated: 2026-10-16
 
 ## What This Is
 
@@ -96,13 +96,13 @@ Coverage policy:
 - Arrow logic deliberately separates three path types:
   - `BodyPath`: arrow body path; can use both `coplanar` seams and `edge_fold` folded edges.
   - `ForwardRay`: gameplay removal ray; follows `forwardAllowed` seams, including coplanar seams and cross-Block 90-degree fold seams.
-  - `SurfaceTrace`: self-facing validation trace; can use both `coplanar` and `edge_fold`.
+  - `SurfaceTrace`: diagnostic surface trace; can use both `coplanar` and `edge_fold`.
 
 ### Head Direction
 
 - The arrow head direction is inferred from the first body segment.
-- If the path has three or more cells, the first and second body steps must continue in the same direction.
 - The arrow head must face opposite to that inferred body-extension direction.
+- The body may turn immediately after its first cell; the second segment does not constrain head direction.
 - Example: body extends upward from the head, arrow direction must be `D`, not `L`.
 
 ### Removal/Blocking
@@ -113,7 +113,7 @@ Coverage policy:
 - `ForwardRay` stops at a same-Block 90° `edge_fold`; ordinary cuboid outer folds do not block current-face movement.
 - If `ForwardRay` cycles through forward-allowed seams, the arrow is not removable and the UI reports `前进路径存在循环`.
 - A missing Surface Cell, hole, uncovered gap, or geometry boundary stops the ray and is treated as an open boundary.
-- `SurfaceTrace` is used only to reject invalid self-facing shapes where the head points into its own cross-face body.
+- A head may point toward its own body after a cross-face path; an arrow's own body does not block its removal.
 - Block geometry boundaries and blocked cells do not count as movement blockers.
 
 ## Editor Modes
@@ -346,7 +346,7 @@ window.compoundArrowEditor = {
 - Reset camera is verified against a long 5-Block compound shape and must keep projected X/Y coverage below the viewport boundary.
 - Disconnected maps are marked invalid and cannot generate.
 - Direction mismatch arrows are rejected.
-- Self-facing cross-face arrows are rejected.
+- Immediate first-body turns and self-facing cross-face arrows are accepted, while an explicitly mismatched head direction is still rejected.
 - Reward core is visible in preview and unlocks when the last playable arrow is removed.
 - Coplanar Block seams remain in `ForwardRay` and can block removal.
 - Cross-Block 90° `edge_fold` seams remain in `ForwardRay` and can block removal.
